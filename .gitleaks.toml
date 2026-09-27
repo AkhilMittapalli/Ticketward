@@ -1,8 +1,7 @@
 # gitleaks configuration: every default rule stays active.
-# The only allow-list entries are test files whose purpose is to contain deliberately fake,
-# secret-shaped strings: they prove the log redactor (core/logging.py) and the research
-# privacy scanner (tools/publish_research.py) catch them. Keep this list exact-path and short;
-# never allow-list a directory.
+# Allow-list entries are limited to deliberately fake, secret-shaped test values and to public,
+# non-secret identifiers that the generic-api-key heuristic mistakes for secrets. Keep every
+# entry exact and explained; never allow-list a directory.
 
 title = "Ticketward gitleaks config"
 
@@ -10,8 +9,22 @@ title = "Ticketward gitleaks config"
 useDefault = true
 
 [allowlist]
-description = "Fake secret-shaped fixtures used to test redaction and the research privacy scan"
+description = "Fake test credentials and public identifiers (see comments)"
 paths = [
+  # Tests whose purpose is to contain fake secret-shaped strings: they prove the log redactor
+  # (core/logging.py) and the research privacy scanner (tools/publish_research.py) catch them.
   '''^backend/tests/unit/test_logging\.py$''',
   '''^backend/tests/unit/test_publish_research\.py$''',
+]
+regexes = [
+  # Fake "strong" secrets that satisfy the prod settings validator in unit/security tests
+  # (backend/tests/unit/test_config.py, backend/tests/security/test_route_auth.py).
+  '''^Zq8vN2kLr5TtY7wPx3Hm$''',
+  '''^a9F3kQ7mZ2xW8vB4nR6t$''',
+  # Fake credential text used to prove problem+json never echoes exception text.
+  '''hunter2''',
+  # Public GitHub security-advisory identifiers cited in research notes.
+  '''^GHSA-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}$''',
+  # Hugging Face transformers model class names (e.g. Qwen3_5ForCausalLM).
+  '''^[A-Za-z0-9_]+For(?:CausalLM|SequenceClassification|TokenClassification)$''',
 ]
