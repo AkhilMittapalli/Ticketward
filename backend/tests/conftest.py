@@ -75,7 +75,7 @@ class FakeCheck:
             await asyncio.sleep(self.delay_s)
         if not self.ok:
             # Deliberately sensitive-looking text: it must never reach clients.
-            msg = "connection refused by 10.0.0.5:5432 for user rf password=hunter2"
+            msg = "connection refused by 10.0.0.5:5432 for user tw password=hunter2"
             raise ConnectionRefusedError(msg)
 
 

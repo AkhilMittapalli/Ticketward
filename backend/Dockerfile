@@ -47,9 +47,9 @@ ENV PATH="/opt/venv/bin:${PATH}" \
     FORWARDED_ALLOW_IPS=127.0.0.1
 
 # Unprivileged user; drop pip (not needed at runtime, avoids scanner noise).
-RUN groupadd --system --gid 10001 rf \
-    && useradd --system --uid 10001 --gid rf --no-create-home --home-dir /nonexistent \
-        --shell /usr/sbin/nologin rf \
+RUN groupadd --system --gid 10001 tw \
+    && useradd --system --uid 10001 --gid tw --no-create-home --home-dir /nonexistent \
+        --shell /usr/sbin/nologin tw \
     && python -m pip uninstall --yes --quiet pip \
     && rm -rf /root/.cache
 

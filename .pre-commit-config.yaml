@@ -53,6 +53,12 @@ repos:
         language: python
         files: ^backend/(pyproject\.toml|uv\.lock)$
         pass_filenames: false
+      - id: uv-lock-check-ml
+        name: uv lock --check (ml)
+        entry: uv lock --check --directory ml
+        language: system
+        files: ^ml/(pyproject\.toml|uv\.lock)$
+        pass_filenames: false
       - id: frontend-eslint
         name: eslint (frontend)
         entry: corepack pnpm --dir frontend lint

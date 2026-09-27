@@ -15,6 +15,8 @@ paths = [
   # (core/logging.py) and the research privacy scanner (tools/publish_research.py) catch them.
   '''^backend/tests/unit/test_logging\.py$''',
   '''^backend/tests/unit/test_publish_research\.py$''',
+  # Fake secret and PII fixtures that prove the datagen PII masker catches them.
+  '''^ml/tests/test_pii_noise_entities\.py$''',
 ]
 regexes = [
   # Fake "strong" secrets that satisfy the prod settings validator in unit/security tests
@@ -27,4 +29,8 @@ regexes = [
   '''^GHSA-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}$''',
   # Hugging Face transformers model class names (e.g. Qwen3_5ForCausalLM).
   '''^[A-Za-z0-9_]+For(?:CausalLM|SequenceClassification|TokenClassification)$''',
+  # Fake provider API key used to prove keys never reach logs or errors (ml/tests/test_providers.py).
+  '''^sk-test-DO-NOT-LEAK-''',
+  # Public Mistral API model ids (configs and tests), e.g. mistral-large-3-25-12.
+  '''^mistral-[a-z0-9-]+$''',
 ]

@@ -12,6 +12,8 @@ SHELL := /usr/bin/env bash
 BACKEND_VENV ?= $(HOME)/.venvs/ticketward-backend
 ML_VENV ?= $(HOME)/.venvs/ticketward-ml
 UV_BACKEND := cd backend && UV_PROJECT_ENVIRONMENT="$(BACKEND_VENV)" uv
+UV_ML := cd ml && UV_PROJECT_ENVIRONMENT="$(ML_VENV)" uv
+DATAGEN := $(UV_ML) run python -m tw_ml.datagen
 PNPM ?= corepack pnpm
 FRONTEND := cd frontend && $(PNPM)
 COMPOSE ?= docker compose
@@ -24,11 +26,14 @@ help: ## Show this help
 		| awk 'BEGIN {FS = ":.*## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
 
 # ------------------------------------------------------------------ setup
-.PHONY: install install-backend install-frontend secrets
-install: install-backend install-frontend ## Install backend (uv, locked) and frontend (pnpm, frozen)
+.PHONY: install install-backend install-ml install-frontend secrets
+install: install-backend install-ml install-frontend ## Install backend + ml (uv, locked) and frontend (pnpm, frozen)
 
 install-backend: ## uv sync --locked into $(BACKEND_VENV)
 	$(UV_BACKEND) sync --locked
+
+install-ml: ## uv sync --locked into $(ML_VENV) (datagen, eval, dev groups; no torch)
+	$(UV_ML) sync --locked
 
 install-frontend: ## pnpm install --frozen-lockfile
 	$(FRONTEND) install --frozen-lockfile
@@ -55,16 +60,19 @@ format: ## Auto-format and auto-fix (ruff, prettier)
 	$(UV_BACKEND) run ruff format ../ml
 	$(FRONTEND) format
 
-typecheck: ## mypy --strict (src, tests, alembic) and tsc --noEmit
+typecheck: ## mypy --strict (backend src/tests/alembic, ml src/tests) and tsc --noEmit
 	$(UV_BACKEND) run mypy src
 	$(UV_BACKEND) run mypy
+	$(UV_ML) run mypy src tests
 	$(FRONTEND) typecheck
 
-test: ## Backend tests (integration tests skip unless TW_TEST_* is set)
+test: ## Backend + ml tests (backend integration tests skip unless TW_TEST_* is set)
 	$(UV_BACKEND) run pytest
+	$(UV_ML) run pytest
 
-test-cov: ## Backend tests with the coverage gate (fail_under = 85)
+test-cov: ## Backend + ml tests with coverage gates (fail_under = 85)
 	$(UV_BACKEND) run pytest --cov --cov-report=term-missing
+	$(UV_ML) run pytest --cov
 
 frontend-check: ## Frontend lint, typecheck, format check and production build
 	$(FRONTEND) lint
@@ -74,6 +82,26 @@ frontend-check: ## Frontend lint, typecheck, format check and production build
 
 precommit: ## Run all pre-commit hooks on all files
 	uvx pre-commit run --all-files
+
+# ------------------------------------------------------------------ data (P1, tw_ml.datagen)
+.PHONY: data-check datagen-dry-run leakage hardset-validate manifests-verify
+data-check: ## Pools up to date + split plans (train, val, test_synth) are feasible
+	$(DATAGEN) pools --check
+	$(DATAGEN) plan --split train
+	$(DATAGEN) plan --split val
+	$(DATAGEN) plan --split test_synth
+
+datagen-dry-run: ## Render 5 Family-A train prompts without calling any provider
+	$(DATAGEN) generate --split train --family A --n 5 --dry-run
+
+leakage: ## Leakage checks C1-C7 over the generated splits (local; data/generated is gitignored)
+	$(DATAGEN) leakage
+
+hardset-validate: ## Validate the owner-written hard set (quotas, attestation, 30/70 split)
+	$(DATAGEN) hardset validate
+
+manifests-verify: ## Verify content-hash manifests of frozen splits
+	$(DATAGEN) manifest verify
 
 # ------------------------------------------------------------------ contracts
 .PHONY: export-schemas check-schemas

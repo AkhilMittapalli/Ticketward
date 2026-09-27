@@ -24,6 +24,7 @@ Makefile text eol=lf
 
 # Generated files: collapsed in GitHub diffs, still reviewed for supply-chain changes.
 backend/uv.lock linguist-generated=true
+ml/uv.lock linguist-generated=true
 frontend/pnpm-lock.yaml linguist-generated=true
 schemas/json/*.schema.json linguist-generated=true
 docs/openapi.json linguist-generated=true
