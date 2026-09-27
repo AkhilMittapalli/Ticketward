@@ -1,0 +1,241 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "ChurnRisk": {
+      "description": "Churn risk (spec §5.5). Assistive signal only (L-02).",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "title": "ChurnRisk",
+      "type": "string"
+    },
+    "Entity": {
+      "additionalProperties": false,
+      "description": "What the model emits: type and value only, never spans (A-29).\n\nPII never appears raw, only as masked placeholders such as ``<EMAIL_1>`` (§5.6).",
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/EntityType"
+        },
+        "value": {
+          "maxLength": 200,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "value"
+      ],
+      "title": "Entity",
+      "type": "object"
+    },
+    "EntityType": {
+      "description": "Extractable entity types (spec §5.6). PII appears only as masked placeholders.",
+      "enum": [
+        "error_code",
+        "http_status",
+        "saml_idp",
+        "invoice_id",
+        "charge_amount",
+        "currency",
+        "charge_date",
+        "workspace_id",
+        "account_id",
+        "user_count_affected",
+        "browser",
+        "os",
+        "app_version",
+        "integration_name",
+        "api_endpoint",
+        "feature_name",
+        "region",
+        "timestamp",
+        "competitor_name",
+        "legal_reference",
+        "steps_already_tried"
+      ],
+      "title": "EntityType",
+      "type": "string"
+    },
+    "Intent": {
+      "description": "Primary/secondary customer intent (spec §5.1): 12 intents + reserved fallback.",
+      "enum": [
+        "sso_login_failure",
+        "account_access_issue",
+        "billing_duplicate_charge",
+        "billing_payment_failure",
+        "refund_request",
+        "cancellation_request",
+        "plan_pricing_inquiry",
+        "service_outage",
+        "bug_report",
+        "how_to_question",
+        "security_report",
+        "privacy_legal_request",
+        "other_unclear"
+      ],
+      "title": "Intent",
+      "type": "string"
+    },
+    "Priority": {
+      "description": "Ticket priority (spec §5.3), highest first.",
+      "enum": [
+        "urgent",
+        "high",
+        "normal",
+        "low"
+      ],
+      "title": "Priority",
+      "type": "string"
+    },
+    "ProductArea": {
+      "description": "Taskmoor product areas (spec §3).",
+      "enum": [
+        "projects_tasks",
+        "boards_timelines",
+        "sso_identity",
+        "user_admin_permissions",
+        "billing_subscriptions",
+        "integrations_api",
+        "notifications_email",
+        "mobile_apps",
+        "reporting_analytics",
+        "automations",
+        "data_import_export",
+        "platform_availability"
+      ],
+      "title": "ProductArea",
+      "type": "string"
+    },
+    "Queue": {
+      "description": "Work queues (spec §5.2).",
+      "enum": [
+        "general_support_tier_1",
+        "technical_support_tier_2",
+        "billing_and_accounts",
+        "customer_success_retention",
+        "security_and_privacy",
+        "incident_response"
+      ],
+      "title": "Queue",
+      "type": "string"
+    },
+    "RecommendedAction": {
+      "description": "``recommended_action`` vocabulary (spec §5.7).",
+      "enum": [
+        "answer_with_kb_article",
+        "request_more_information",
+        "request_saml_error_details_and_check_known_incident",
+        "check_known_incident_and_share_status",
+        "collect_repro_steps_and_escalate_to_engineering",
+        "escalate_to_engineering",
+        "escalate_to_billing_for_review",
+        "escalate_to_csm_retention",
+        "escalate_to_security",
+        "escalate_to_privacy_legal",
+        "offer_human_contact",
+        "send_password_reset_guidance",
+        "share_pricing_page_reference",
+        "link_to_active_incident",
+        "route_to_tier_2",
+        "close_as_duplicate_ticket",
+        "no_action_spam"
+      ],
+      "title": "RecommendedAction",
+      "type": "string"
+    },
+    "Sentiment": {
+      "description": "Customer sentiment of the latest message (spec §5.4). Assistive signal only (L-02).",
+      "enum": [
+        "positive",
+        "neutral",
+        "confused",
+        "frustrated",
+        "angry"
+      ],
+      "title": "Sentiment",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "SLM output contract (approx. 120-220 output tokens).",
+  "properties": {
+    "intent": {
+      "$ref": "#/$defs/Intent"
+    },
+    "secondary_intents": {
+      "description": "No duplicates and never the primary intent; checked after validation (repair level 1 fixes it, §6.6).",
+      "items": {
+        "$ref": "#/$defs/Intent"
+      },
+      "maxItems": 2,
+      "title": "Secondary Intents",
+      "type": "array"
+    },
+    "priority": {
+      "$ref": "#/$defs/Priority"
+    },
+    "sentiment": {
+      "$ref": "#/$defs/Sentiment"
+    },
+    "churn_risk": {
+      "$ref": "#/$defs/ChurnRisk"
+    },
+    "churn_signals": {
+      "items": {
+        "maxLength": 200,
+        "type": "string"
+      },
+      "maxItems": 5,
+      "title": "Churn Signals",
+      "type": "array"
+    },
+    "product_area": {
+      "$ref": "#/$defs/ProductArea"
+    },
+    "entities": {
+      "items": {
+        "$ref": "#/$defs/Entity"
+      },
+      "maxItems": 20,
+      "title": "Entities",
+      "type": "array"
+    },
+    "recommended_queue": {
+      "$ref": "#/$defs/Queue"
+    },
+    "recommended_action": {
+      "$ref": "#/$defs/RecommendedAction"
+    },
+    "customer_requested_human": {
+      "title": "Customer Requested Human",
+      "type": "boolean"
+    },
+    "information_sufficient": {
+      "title": "Information Sufficient",
+      "type": "boolean"
+    },
+    "rationale": {
+      "description": "Short rationale for agent and handoff; not chain-of-thought.",
+      "maxLength": 400,
+      "title": "Rationale",
+      "type": "string"
+    }
+  },
+  "required": [
+    "intent",
+    "priority",
+    "sentiment",
+    "churn_risk",
+    "product_area",
+    "recommended_queue",
+    "recommended_action",
+    "customer_requested_human",
+    "information_sufficient",
+    "rationale"
+  ],
+  "title": "TriageModelOutput",
+  "type": "object"
+}

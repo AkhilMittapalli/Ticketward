@@ -1,0 +1,83 @@
+# Dependabot version updates (spec §12.8). Security updates are enabled separately in the
+# repository settings. `cooldown` delays brand-new releases (supply-chain hygiene).
+version: 2
+updates:
+  - package-ecosystem: uv
+    directory: /backend
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 5
+    groups:
+      # spec §12.8: OpenTelemetry packages move together (they arrive in P7).
+      opentelemetry:
+        patterns: ["opentelemetry-*"]
+      backend-minor-patch:
+        update-types: [minor, patch]
+    commit-message:
+      prefix: "chore(deps)"
+
+  # ml/ has no uv.lock until P2/P3; switch this entry to `uv` once it exists.
+  - package-ecosystem: pip
+    directory: /ml
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(deps-ml)"
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 5
+    groups:
+      # spec §12.8: next and react* are exact-pinned and upgraded together, including
+      # majors; review against the GitHub Advisory Database (72 h SLA, SECURITY.md).
+      next-react:
+        patterns: ["next", "eslint-config-next", "react", "react-dom", "@types/react", "@types/react-dom"]
+      frontend-minor-patch:
+        update-types: [minor, patch]
+    commit-message:
+      prefix: "chore(deps-web)"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: "ci"
+
+  - package-ecosystem: docker
+    directories: [/backend, /frontend]
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: "chore(docker)"
+
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: "chore(docker)"
+
+  - package-ecosystem: pre-commit
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: "chore(pre-commit)"

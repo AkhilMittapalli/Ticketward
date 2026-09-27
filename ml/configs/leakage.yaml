@@ -1,0 +1,47 @@
+# Leakage and dedup configuration (tw_ml.datagen.leakage). Spec v1.1 §9.3 (A-12); ERPROT
+# leakage-and-dedup D2-D5. The thresholds are INITIAL values: the D5 calibration on real P1 data
+# confirms or adjusts them, and the chosen values plus the calibration report id are copied into
+# every leakage report.
+version: leakage.v1
+char_ngram: 5 # character 5-gram shingles over the D1-normalized customer_text
+jaccard_flag: 0.70 # C2: exact Jaccard at or above this flags a pair
+jaccard_report: 0.50 # C2: report-only band [0.50, 0.70)
+within_split_flag: 0.80 # C7: within train / within val near-duplicates (quality)
+exact_max_pairs: 50000000 # exact all-pairs Jaccard (sparse product) is the CI truth up to this size
+
+lsh: # candidate generation only; every candidate is verified with exact Jaccard
+  num_perm: 128
+  threshold: 0.5
+  weights: [0.2, 0.8] # recall-weighted: b=30, r=4, P(candidate | J=0.70) ~ 0.9997
+  expected_b: 30 # asserted: a datasketch upgrade that changes the optimizer fails the run
+  expected_r: 4
+  seed: 1
+  datasketch_version: "2.0.0"
+  crosscheck: true # report exact flags the LSH candidates would have missed
+
+embedding: # C3 (optional): skipped cleanly when sentence-transformers is absent or unpinned
+  enabled: true
+  model: BAAI/bge-small-en-v1.5 # leakage-only embedder, independent of the retrieval embedder
+  revision: null # TODO(P1.26): pin the HF commit SHA before the first real run
+  sentence_transformers_version: "6.1.0" # not in ml/uv.lock (it would pull torch); install it
+  # into the environment that runs the check, e.g. `uv pip install sentence-transformers==6.1.0`
+  tau: 0.92 # starting value, calibrated by protocol D5
+  batch_size: 64
+
+kb: # C5
+  window_tokens: 30
+  report_run_tokens: 12
+
+protected: # C6
+  strings_file: data/spec/protected_strings.v1.txt
+  jaccard: 0.60
+  span_words: 8
+  containment_min_words: 5 # stricter than the spec: a whole guideline example of 5+ words also flags
+
+prompt_echo: # report-only probe (ERPROT D6): shared 8-grams with generator prompts / fact sheet
+  sources:
+    - ml/prompts/datagen/pa_persona.v1.txt
+    - ml/prompts/datagen/pb_scenario.v1.txt
+    - data/spec/fact_sheet.v1.md
+  ngram: 8
+  intent_rate_limit: 0.05 # an intent above 1 echo per 20 tickets is listed for regeneration

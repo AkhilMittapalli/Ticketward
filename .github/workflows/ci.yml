@@ -1,0 +1,229 @@
+# CI (spec §14.5). Actions are pinned by full commit SHA (resolved 2026-09-26);
+# Dependabot (github-actions) proposes updates. Least-privilege token by default.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  UV_VERSION: "0.9.6"
+  FORCE_COLOR: "1"
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  backend-lint:
+    name: backend / lint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          working-directory: backend
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - name: Install (lockfile must be up to date)
+        run: uv sync --locked
+      - name: Ruff (backend)
+        run: |
+          uv run ruff check . --output-format=github
+          uv run ruff format --check .
+      - name: Ruff (scripts, ml)
+        run: |
+          uv run ruff check ../scripts --output-format=github
+          uv run ruff format --check ../scripts
+          uv run ruff check ../ml --output-format=github
+          uv run ruff format --check ../ml
+
+  backend-typecheck:
+    name: backend / mypy (strict)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          working-directory: backend
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: uv sync --locked
+      - name: mypy src
+        run: uv run mypy src
+      - name: mypy src + tests + alembic
+        run: uv run mypy
+
+  backend-test:
+    name: backend / tests + coverage
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          working-directory: backend
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: uv sync --locked
+      - name: Unit, property, security and contract tests (coverage gate in pyproject)
+        run: uv run pytest --cov --cov-report=term-missing
+      - name: Contracts are exported (schemas/json, docs/openapi.json)
+        run: uv run python ../scripts/export_schemas.py --check
+      - name: Published research contains no private content (docs/research)
+        run: uv run python ../scripts/sync_research.py --scan-only
+
+  backend-integration:
+    name: backend / integration (postgres + redis)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.6-pg16@sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b
+        env:
+          POSTGRES_DB: rf
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres # throwaway, CI-only service container
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d rf"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+      redis:
+        image: redis:7-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          working-directory: backend
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: uv sync --locked
+      - name: Readiness checks and migrations upgrade -> downgrade -> upgrade
+        env:
+          PGPASSWORD: postgres
+        run: |
+          export TW_TEST_DATABASE_URL="postgresql+asyncpg://postgres:${PGPASSWORD}@127.0.0.1:5432/rf"
+          export TW_TEST_REDIS_URL="redis://127.0.0.1:6379/0"
+          uv run pytest -m integration -q
+
+  frontend:
+    name: frontend / lint + typecheck + build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          package_json_file: frontend/package.json # version from "packageManager"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: frontend/.nvmrc
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: No Server Actions or cache directives (grep backstop for the ESLint ban)
+        run: |
+          if grep -rnE "['\"]use (server|cache)['\"]" src; then
+            echo "Server Actions / 'use cache' are banned (spec §12.7, A-24)" >&2
+            exit 1
+          fi
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm format:check
+      - run: pnpm build
+
+  pr-title:
+    name: pr / conventional-commit title
+    # Squash merges turn the PR title into the commit message (spec §14.4, A-26).
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check the PR title (passed via env, never interpolated into the script)
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          pattern='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9._/-]+\))?!?: [^ ].{0,99}$'
+          if [[ ! "$PR_TITLE" =~ $pattern ]]; then
+            echo "PR title must follow Conventional Commits, e.g. 'feat(policy): add legal-threat lexicon'." >&2
+            exit 1
+          fi
+
+  compose:
+    name: compose / validate + smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Validate compose files (dev and prod)
+        run: |
+          docker compose config --quiet
+          docker compose -f compose.yaml -f compose.prod.yaml config --quiet
+      - name: Generate throwaway secrets
+        run: python3 scripts/gen_dev_secrets.py
+      - name: Start the core stack (dev override is auto-loaded)
+        run: docker compose up -d --build
+      - name: Wait for readiness
+        run: |
+          for attempt in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8000/api/v1/health/ready; then echo; exit 0; fi
+            sleep 3
+          done
+          echo "API never became ready" >&2
+          exit 1
+      - name: Liveness, security headers, problem+json
+        run: |
+          curl -fsS http://127.0.0.1:8000/api/v1/health/live
+          curl -sS -D - -o /dev/null http://127.0.0.1:8000/api/v1/health/live | grep -i "^x-content-type-options: nosniff"
+          curl -sS http://127.0.0.1:8000/api/v1/nope | grep -q '"code":"NOT_FOUND"'
+      - name: Diagnostics on failure
+        if: failure()
+        run: |
+          docker compose ps -a
+          docker compose logs --no-color --tail=200
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

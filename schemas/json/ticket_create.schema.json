@@ -1,0 +1,321 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "AccountMetadata": {
+      "additionalProperties": false,
+      "description": "Optional CRM metadata for the customer account (synthetic in this project).",
+      "properties": {
+        "account_id": {
+          "pattern": "^acct_[A-Za-z0-9]{4,32}$",
+          "title": "Account Id",
+          "type": "string"
+        },
+        "company_name": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Company Name"
+        },
+        "arr_band": {
+          "anyOf": [
+            {
+              "enum": [
+                "<10k",
+                "10k-50k",
+                "50k-250k",
+                ">250k"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Arr Band"
+        },
+        "region": {
+          "anyOf": [
+            {
+              "enum": [
+                "us",
+                "eu",
+                "apac"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Region"
+        },
+        "seats": {
+          "anyOf": [
+            {
+              "maximum": 1000000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seats"
+        },
+        "csm_owner_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Csm Owner Id"
+        }
+      },
+      "required": [
+        "account_id"
+      ],
+      "title": "AccountMetadata",
+      "type": "object"
+    },
+    "Channel": {
+      "description": "Ticket source channel (spec §6.1). Metadata only at runtime (NG-06).",
+      "enum": [
+        "web_form",
+        "email",
+        "api",
+        "chat_transcript"
+      ],
+      "title": "Channel",
+      "type": "string"
+    },
+    "PlanTier": {
+      "description": "Taskmoor plan tiers (spec §3, §6.1).",
+      "enum": [
+        "free",
+        "starter",
+        "business",
+        "enterprise"
+      ],
+      "title": "PlanTier",
+      "type": "string"
+    },
+    "PreviousMessage": {
+      "additionalProperties": false,
+      "description": "A prior message in the ticket thread.",
+      "properties": {
+        "author": {
+          "enum": [
+            "customer",
+            "agent",
+            "system"
+          ],
+          "title": "Author",
+          "type": "string"
+        },
+        "body": {
+          "maxLength": 20000,
+          "title": "Body",
+          "type": "string"
+        },
+        "sent_at": {
+          "format": "date-time",
+          "title": "Sent At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "author",
+        "body",
+        "sent_at"
+      ],
+      "title": "PreviousMessage",
+      "type": "object"
+    },
+    "ProductArea": {
+      "description": "Taskmoor product areas (spec §3).",
+      "enum": [
+        "projects_tasks",
+        "boards_timelines",
+        "sso_identity",
+        "user_admin_permissions",
+        "billing_subscriptions",
+        "integrations_api",
+        "notifications_email",
+        "mobile_apps",
+        "reporting_analytics",
+        "automations",
+        "data_import_export",
+        "platform_availability"
+      ],
+      "title": "ProductArea",
+      "type": "string"
+    },
+    "ProductMetadata": {
+      "additionalProperties": false,
+      "description": "Optional product context supplied by the source channel.",
+      "properties": {
+        "product_area_hint": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProductArea"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "app_version": {
+          "anyOf": [
+            {
+              "maxLength": 50,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "App Version"
+        },
+        "platform": {
+          "anyOf": [
+            {
+              "enum": [
+                "web",
+                "ios",
+                "android",
+                "desktop",
+                "api"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Platform"
+        }
+      },
+      "title": "ProductMetadata",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Inbound ticket from the web form, JSON API or simulated email feed (BR-017).",
+  "properties": {
+    "external_id": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Dedupe key per source.",
+      "title": "External Id"
+    },
+    "customer_tier": {
+      "$ref": "#/$defs/PlanTier"
+    },
+    "channel": {
+      "$ref": "#/$defs/Channel"
+    },
+    "subject": {
+      "maxLength": 300,
+      "minLength": 1,
+      "title": "Subject",
+      "type": "string"
+    },
+    "message": {
+      "maxLength": 20000,
+      "minLength": 1,
+      "title": "Message",
+      "type": "string"
+    },
+    "previous_messages": {
+      "items": {
+        "$ref": "#/$defs/PreviousMessage"
+      },
+      "maxItems": 50,
+      "title": "Previous Messages",
+      "type": "array"
+    },
+    "customer_email": {
+      "anyOf": [
+        {
+          "format": "email",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Stored encrypted; masked before any model call.",
+      "title": "Customer Email"
+    },
+    "account": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AccountMetadata"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "product": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ProductMetadata"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "received_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Received At"
+    }
+  },
+  "required": [
+    "customer_tier",
+    "channel",
+    "subject",
+    "message"
+  ],
+  "title": "TicketCreate",
+  "type": "object"
+}

@@ -1,0 +1,62 @@
+name: Eval regression
+description: A metric dropped below its acceptance threshold or versus the production baseline.
+title: "eval: "
+labels: [eval-regression, triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Any miss on M-07a (forced-escalation correctness, must be 1.00) blocks release and is a Sev-2.
+  - type: dropdown
+    id: metric
+    attributes:
+      label: Metric
+      options:
+        - M-01 intent macro-F1
+        - M-02 routing accuracy
+        - M-03 field accuracy
+        - M-03c critical-category recall
+        - M-04 JSON validity / repair
+        - M-05 retrieval Recall@k
+        - M-06 citation-support precision
+        - M-07a forced escalation
+        - M-07b correct abstention
+        - M-07c over-escalation
+        - M-07d human-request detection
+        - M-08 latency
+        - M-09/M-10 cost
+        - M-12 calibration ECE
+        - M-13 injection resilience
+    validations:
+      required: true
+  - type: input
+    id: eval-run
+    attributes:
+      label: eval_run_id / report path
+      placeholder: evals/reports/<date>/results.md
+    validations:
+      required: true
+  - type: input
+    id: split
+    attributes:
+      label: Split
+      placeholder: test_synth / test_hard / test_ood / smoke
+    validations:
+      required: true
+  - type: textarea
+    id: delta
+    attributes:
+      label: Observed vs expected
+      description: Value, threshold or baseline, delta, and bootstrap CI if available.
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Model / prompt / policy / taxonomy versions
+      placeholder: tw-triage-...@x.y.z, triage.v1, rules.v1, 2026-09-v1
+  - type: textarea
+    id: suspected-cause
+    attributes:
+      label: Suspected cause and affected items
+      description: Record ids from eval_items (synthetic data only).

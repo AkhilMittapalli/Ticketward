@@ -1,0 +1,75 @@
+# PLACEHOLDER - planned in P9 (reverse proxy + TLS, spec §12.7, §12.9, §24.2). Not wired
+# into compose.yaml yet and not validated (`caddy validate` runs at P9; target Caddy 2.11.x).
+# When enabled, Caddy is the ONLY published service (80/443) and the UI and API are served
+# same-origin, so CORS stays disabled in production. Dev will get its own
+# infra/caddy/Caddyfile.dev (https://localhost, `tls internal`; spec §12.7), not yet written.
+#
+#   TW_SITE_ADDRESS   e.g. demo.example.com (automatic HTTPS) or localhost (local CA)
+
+{
+	admin off
+	# email {$TW_ACME_EMAIL}   # ACME account for public certificates (P11)
+}
+
+{$TW_SITE_ADDRESS:localhost} {
+	encode zstd gzip
+
+	# Global cap just above the largest API route limit (2 MB batch ingestion, spec §11),
+	# so the API's per-route limits decide and answer with problem+json.
+	request_body {
+		max_size 3MB
+	}
+
+	# Never trust client-supplied values for these (A-24; CVE-2025-29927-class bypasses).
+	request_header -Content-Security-Policy
+	request_header -X-Nonce
+	request_header -X-Middleware-Subrequest
+
+	# Security headers for every response. The web UI sets its nonce CSP (P8) and the API
+	# its own (default-src 'none'); the fallback CSP applies only where none was set.
+	header {
+		defer
+		Strict-Transport-Security "max-age=63072000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"
+		Cross-Origin-Opener-Policy "same-origin"
+		Cross-Origin-Resource-Policy "same-origin"
+		X-Frame-Options "DENY"
+		?Content-Security-Policy "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'"
+		-Server
+		-X-Powered-By
+	}
+
+	# Hidden surfaces (spec §24.2): metrics, API docs and the Next.js image optimizer.
+	@blocked path /api/v1/metrics /api/v1/metrics/* /api/docs* /api/redoc* /api/openapi.json /_next/image*
+	handle @blocked {
+		respond 404
+	}
+
+	@api path /api/*
+	handle @api {
+		reverse_proxy api:8000 {
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	# No Server Actions: only GET/HEAD requests reach Next.js.
+	@web_write not method GET HEAD
+	handle @web_write {
+		respond 405
+	}
+
+	handle {
+		reverse_proxy web:3000 {
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	log {
+		output stdout
+		format json
+		# TODO(P9): drop the ticket search term (`q`) from access logs; verify the 2.11
+		# log-filter syntax (spec §24.2).
+	}
+}

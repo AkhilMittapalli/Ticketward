@@ -1,0 +1,33 @@
+name: Feature request
+description: Propose a capability or improvement.
+title: "feat: "
+labels: [enhancement, triage]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or opportunity
+      description: Which persona (agent, ops lead, CSM, engineering, admin) and workflow does it affect?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+  - type: input
+    id: requirements
+    attributes:
+      label: Related BR-IDs / ADRs
+      placeholder: e.g. BR-012, ADR-0010
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety and scope
+      options:
+        - label: Keeps human review, no auto-send, and forced escalation rules (S-01..S-03) intact
+          required: true
+        - label: Uses synthetic / public / authorized de-identified data only (S-12)
+          required: true
+        - label: Needs a taxonomy change (requires an ADR and a new taxonomy_version)

@@ -1,0 +1,17 @@
+# gitleaks configuration: every default rule stays active.
+# The only allow-list entries are test files whose purpose is to contain deliberately fake,
+# secret-shaped strings: they prove the log redactor (core/logging.py) and the research
+# privacy scanner (tools/publish_research.py) catch them. Keep this list exact-path and short;
+# never allow-list a directory.
+
+title = "Ticketward gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Fake secret-shaped fixtures used to test redaction and the research privacy scan"
+paths = [
+  '''^backend/tests/unit/test_logging\.py$''',
+  '''^backend/tests/unit/test_publish_research\.py$''',
+]

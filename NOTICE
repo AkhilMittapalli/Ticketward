@@ -1,0 +1,17 @@
+Ticketward
+Copyright 2026 Akhil Mittapalli
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Taskmoor, the product that appears in this repository's data and examples, is fictional
+and not affiliated with any real company.
+
+Third-party software is distributed under its own licenses; the exact dependency set is
+recorded in backend/uv.lock and frontend/pnpm-lock.yaml, and each release attaches an SBOM.
+
+Planned attributions (added when the components ship):
+- TODO(P6, D-05): "Built with Llama" and the notice text required by the license of Llama
+  Prompt Guard 2 (verify the license text at P6); the same applies to the base model if a
+  Llama base wins the P2 bake-off.
+- TODO(P1): attribution for the Bitext customer-support dataset (CDLA-Sharing-1.0), which
+  is referenced by pointers only.

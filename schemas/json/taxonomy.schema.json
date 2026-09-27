@@ -1,0 +1,233 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TicketwardTaxonomy",
+  "description": "Frozen domain taxonomy (spec section 5). Changing it requires an ADR.",
+  "type": "object",
+  "properties": {
+    "taxonomy_version": {
+      "const": "2026-09-v1"
+    }
+  },
+  "required": [
+    "taxonomy_version"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "Intent": {
+      "title": "Intent",
+      "description": "Primary/secondary customer intent (spec §5.1): 12 intents + reserved fallback.",
+      "type": "string",
+      "enum": [
+        "sso_login_failure",
+        "account_access_issue",
+        "billing_duplicate_charge",
+        "billing_payment_failure",
+        "refund_request",
+        "cancellation_request",
+        "plan_pricing_inquiry",
+        "service_outage",
+        "bug_report",
+        "how_to_question",
+        "security_report",
+        "privacy_legal_request",
+        "other_unclear"
+      ]
+    },
+    "Queue": {
+      "title": "Queue",
+      "description": "Work queues (spec §5.2).",
+      "type": "string",
+      "enum": [
+        "general_support_tier_1",
+        "technical_support_tier_2",
+        "billing_and_accounts",
+        "customer_success_retention",
+        "security_and_privacy",
+        "incident_response"
+      ]
+    },
+    "Priority": {
+      "title": "Priority",
+      "description": "Ticket priority (spec §5.3), highest first.",
+      "type": "string",
+      "enum": [
+        "urgent",
+        "high",
+        "normal",
+        "low"
+      ]
+    },
+    "Sentiment": {
+      "title": "Sentiment",
+      "description": "Customer sentiment of the latest message (spec §5.4). Assistive signal only (L-02).",
+      "type": "string",
+      "enum": [
+        "positive",
+        "neutral",
+        "confused",
+        "frustrated",
+        "angry"
+      ]
+    },
+    "ChurnRisk": {
+      "title": "ChurnRisk",
+      "description": "Churn risk (spec §5.5). Assistive signal only (L-02).",
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "ProductArea": {
+      "title": "ProductArea",
+      "description": "Taskmoor product areas (spec §3).",
+      "type": "string",
+      "enum": [
+        "projects_tasks",
+        "boards_timelines",
+        "sso_identity",
+        "user_admin_permissions",
+        "billing_subscriptions",
+        "integrations_api",
+        "notifications_email",
+        "mobile_apps",
+        "reporting_analytics",
+        "automations",
+        "data_import_export",
+        "platform_availability"
+      ]
+    },
+    "EntityType": {
+      "title": "EntityType",
+      "description": "Extractable entity types (spec §5.6). PII appears only as masked placeholders.",
+      "type": "string",
+      "enum": [
+        "error_code",
+        "http_status",
+        "saml_idp",
+        "invoice_id",
+        "charge_amount",
+        "currency",
+        "charge_date",
+        "workspace_id",
+        "account_id",
+        "user_count_affected",
+        "browser",
+        "os",
+        "app_version",
+        "integration_name",
+        "api_endpoint",
+        "feature_name",
+        "region",
+        "timestamp",
+        "competitor_name",
+        "legal_reference",
+        "steps_already_tried"
+      ]
+    },
+    "SamlIdp": {
+      "title": "SamlIdp",
+      "description": "Normalized values for ``saml_idp`` entities (spec §5.6).",
+      "type": "string",
+      "enum": [
+        "okta",
+        "azure_ad",
+        "google",
+        "onelogin",
+        "other"
+      ]
+    },
+    "RecommendedAction": {
+      "title": "RecommendedAction",
+      "description": "``recommended_action`` vocabulary (spec §5.7).",
+      "type": "string",
+      "enum": [
+        "answer_with_kb_article",
+        "request_more_information",
+        "request_saml_error_details_and_check_known_incident",
+        "check_known_incident_and_share_status",
+        "collect_repro_steps_and_escalate_to_engineering",
+        "escalate_to_engineering",
+        "escalate_to_billing_for_review",
+        "escalate_to_csm_retention",
+        "escalate_to_security",
+        "escalate_to_privacy_legal",
+        "offer_human_contact",
+        "send_password_reset_guidance",
+        "share_pricing_page_reference",
+        "link_to_active_incident",
+        "route_to_tier_2",
+        "close_as_duplicate_ticket",
+        "no_action_spam"
+      ]
+    },
+    "EscalationReason": {
+      "title": "EscalationReason",
+      "description": "Escalation reasons recorded in ``escalation_reasons[]`` (spec §5.9, v1.1).\n\n    v1.1 added ``critical_category_suspected`` (rule N6), ``queue_overridden_by_rule``\n    (rule N1 / §7.3.2) and ``pii_masking_failed`` (rule P7). They are system-emitted, not\n    model labels, so ``TAXONOMY_VERSION`` stays ``2026-09-v1`` (ADR-0029 amendment).\n    Member order follows the spec list.",
+      "type": "string",
+      "enum": [
+        "customer_requested_human",
+        "forced_category_refund",
+        "forced_category_cancellation",
+        "forced_category_payment_dispute",
+        "forced_category_security",
+        "forced_category_legal_threat",
+        "forced_category_privacy",
+        "active_incident",
+        "critical_category_suspected",
+        "low_confidence_intent",
+        "low_confidence_queue",
+        "queue_overridden_by_rule",
+        "insufficient_evidence",
+        "stale_evidence_only",
+        "conflicting_evidence",
+        "schema_invalid_after_repair",
+        "prompt_injection_suspected",
+        "unsupported_language",
+        "high_churn_risk_high_value",
+        "retention_risk",
+        "pii_heavy_content",
+        "pii_masking_failed",
+        "input_truncated",
+        "model_unavailable",
+        "agent_initiated"
+      ]
+    },
+    "PlanTier": {
+      "title": "PlanTier",
+      "description": "Taskmoor plan tiers (spec §3, §6.1).",
+      "type": "string",
+      "enum": [
+        "free",
+        "starter",
+        "business",
+        "enterprise"
+      ]
+    },
+    "Channel": {
+      "title": "Channel",
+      "description": "Ticket source channel (spec §6.1). Metadata only at runtime (NG-06).",
+      "type": "string",
+      "enum": [
+        "web_form",
+        "email",
+        "api",
+        "chat_transcript"
+      ]
+    },
+    "DocType": {
+      "title": "DocType",
+      "description": "Knowledge-base document types (spec §8.1).",
+      "type": "string",
+      "enum": [
+        "help_article",
+        "policy",
+        "product_doc",
+        "known_incident",
+        "escalation_runbook",
+        "reply_template"
+      ]
+    }
+  }
+}

@@ -1,0 +1,21 @@
+# Production-like overrides (spec §16 P11). ALWAYS pass explicitly:
+#
+#   docker compose -f compose.yaml -f compose.prod.yaml up -d --build
+#
+# Using -f disables compose.override.yaml, so nothing from the dev file (loopback ports,
+# CORS, dev mode) leaks in. The API refuses to boot in prod with weak/placeholder
+# secrets, debug, docs or CORS enabled (core/config.py).
+#
+# No port is published yet: the Caddy reverse proxy (P9) becomes the only public
+# service (443, TLS, security headers) and sets FORWARDED_ALLOW_IPS to its address.
+
+services:
+  migrate:
+    environment:
+      TW_ENV: prod
+
+  api:
+    environment:
+      TW_ENV: prod
+      TW_DOCS_ENABLED: "false"
+      TW_LOG_LEVEL: INFO

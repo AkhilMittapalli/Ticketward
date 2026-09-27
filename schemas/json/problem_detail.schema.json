@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "ErrorCode": {
+      "description": "Stable machine-readable error codes (spec v1.1 §11).",
+      "enum": [
+        "BAD_REQUEST",
+        "VALIDATION_ERROR",
+        "UNAUTHENTICATED",
+        "FORBIDDEN",
+        "CSRF_FAILED",
+        "DEMO_LOCKED",
+        "NOT_FOUND",
+        "METHOD_NOT_ALLOWED",
+        "CONFLICT",
+        "REFRESH_SUPERSEDED",
+        "IDEMPOTENCY_MISMATCH",
+        "PAYLOAD_TOO_LARGE",
+        "UNSUPPORTED_MEDIA_TYPE",
+        "RATE_LIMITED",
+        "UPSTREAM_UNAVAILABLE",
+        "MAINTENANCE",
+        "INTERNAL"
+      ],
+      "title": "ErrorCode",
+      "type": "string"
+    },
+    "FieldError": {
+      "additionalProperties": false,
+      "description": "One request-validation failure. The offending input is never echoed back.",
+      "properties": {
+        "loc": {
+          "description": "Path to the invalid value, e.g. ['body', 'subject'].",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ]
+          },
+          "title": "Loc",
+          "type": "array"
+        },
+        "msg": {
+          "description": "Human-readable constraint violation.",
+          "maxLength": 256,
+          "title": "Msg",
+          "type": "string"
+        },
+        "type": {
+          "description": "Pydantic error type, e.g. 'string_too_long'.",
+          "maxLength": 64,
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "loc",
+        "msg",
+        "type"
+      ],
+      "title": "FieldError",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "``application/problem+json`` body returned for every error response.",
+  "properties": {
+    "type": {
+      "description": "Problem type URI.",
+      "title": "Type",
+      "type": "string"
+    },
+    "title": {
+      "description": "Short, stable summary of the problem type.",
+      "title": "Title",
+      "type": "string"
+    },
+    "status": {
+      "description": "HTTP status code.",
+      "maximum": 599,
+      "minimum": 100,
+      "title": "Status",
+      "type": "integer"
+    },
+    "detail": {
+      "description": "Client-safe explanation. Never contains exception text.",
+      "title": "Detail",
+      "type": "string"
+    },
+    "instance": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Request path (no query string).",
+      "title": "Instance"
+    },
+    "code": {
+      "$ref": "#/$defs/ErrorCode",
+      "description": "Stable machine-readable error code."
+    },
+    "request_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Correlates with server logs.",
+      "title": "Request Id"
+    },
+    "errors": {
+      "anyOf": [
+        {
+          "items": {
+            "$ref": "#/$defs/FieldError"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Field errors (validation failures only).",
+      "title": "Errors"
+    }
+  },
+  "required": [
+    "type",
+    "title",
+    "status",
+    "detail",
+    "code"
+  ],
+  "title": "ProblemDetail",
+  "type": "object"
+}

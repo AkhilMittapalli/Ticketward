@@ -1,0 +1,3 @@
+# Repository scripts follow the backend lint/format configuration (same rules, line length),
+# whether ruff runs from pre-commit (repo root), CI or the Makefile.
+extend = "../backend/pyproject.toml"

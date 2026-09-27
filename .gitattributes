@@ -1,0 +1,29 @@
+# Normalize line endings: LF in the repository and in working trees (Windows included).
+* text=auto eol=lf
+*.sh text eol=lf
+*.py text eol=lf
+Makefile text eol=lf
+# Windows-only scripts keep CRLF.
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary assets (no diff, no EOL conversion).
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.parquet binary
+*.gguf binary
+*.safetensors binary
+
+# Generated files: collapsed in GitHub diffs, still reviewed for supply-chain changes.
+backend/uv.lock linguist-generated=true
+frontend/pnpm-lock.yaml linguist-generated=true
+schemas/json/*.schema.json linguist-generated=true
+docs/openapi.json linguist-generated=true

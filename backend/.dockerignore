@@ -1,0 +1,21 @@
+# Build context = backend/. Only pyproject.toml, uv.lock, README.md, src/, alembic.ini
+# and alembic/ are needed; everything else stays out of the image and the build cache.
+**/__pycache__
+**/*.py[cod]
+.venv
+.coverage
+.coverage.*
+coverage.xml
+htmlcov
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.hypothesis
+*.egg-info
+build
+dist
+tests
+.env
+.env.*
+Dockerfile
+.dockerignore

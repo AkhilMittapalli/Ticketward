@@ -1,0 +1,85 @@
+# ---------------------------------------------------------------- secrets & env
+# Real values never enter git; only placeholders are tracked (spec §12.6).
+.env
+.env.*
+!.env.example
+secrets/*
+!secrets/README.md
+!secrets/*.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# ---------------------------------------------------------------- python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+# Virtualenvs must live OUTSIDE this OneDrive-synced repo (risk R-13); ignore strays anyway.
+.venv/
+venv/
+.python-version.local
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.tox/
+.nox/
+.ipynb_checkpoints/
+
+# ---------------------------------------------------------------- node / next.js
+node_modules/
+.pnpm-store/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+npm-debug.log*
+pnpm-debug.log*
+yarn-error.log*
+frontend/coverage/
+frontend/test-results/
+frontend/playwright-report/
+
+# ---------------------------------------------------------------- data, models, experiments
+# Large datasets are published on the HF Hub; only manifests/specs/KB sources are tracked.
+data/raw/
+data/generated/
+data/cache/
+data/exports/
+data/**/*.parquet
+data/**/*.arrow
+data/**/*.feather
+mlruns/
+mlartifacts/
+wandb/
+# Anchored: backend/src/ticketward/db/models/ (ORM code, P4) must stay tracked.
+/models/
+/checkpoints/
+/ml/models/
+/ml/checkpoints/
+/ml/outputs/
+*.gguf
+*.safetensors
+*.pt
+*.pth
+*.ckpt
+*.onnx
+
+# ---------------------------------------------------------------- logs, os, editors
+*.log
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*~
+.idea/
+.vscode/*
+!.vscode/extensions.json

@@ -1,0 +1,187 @@
+# Ticketward - core stack (spec §12.9 container hardening, §15 health).
+#
+#   python scripts/gen_dev_secrets.py   # once: creates ./secrets/tw_* (gitignored)
+#   docker compose up -d --build        # dev: ALSO loads compose.override.yaml
+#   docker compose -f compose.yaml -f compose.prod.yaml up -d --build   # prod-like
+#
+# Core services (postgres, redis, migrate, api) never sit behind a profile. Profiles are
+# reserved for opt-in stacks: `ml` (P3/P4) and `observability` (P7), stubbed below.
+# db/redis live on an internal network; nothing is published by this file.
+
+name: ticketward
+
+x-hardening: &hardening
+  read_only: true
+  cap_drop: [ALL]
+  security_opt:
+    - no-new-privileges:true
+  init: true
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+x-api-build: &api-build
+  context: ./backend
+  dockerfile: Dockerfile
+
+x-api-env: &api-env
+  TW_ENV: ${TW_ENV:-prod}
+  TW_LOG_LEVEL: ${TW_LOG_LEVEL:-INFO}
+  TW_DB_HOST: postgres
+  TW_DB_PORT: "5432"
+  TW_DB_NAME: ticketward
+  TW_DB_USER: ticketward
+  TW_REDIS_URL: redis://redis:6379/0
+  TW_SECRETS_DIR: /run/secrets
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.6-pg16@sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b
+    <<: *hardening
+    user: postgres
+    environment:
+      POSTGRES_DB: ticketward
+      POSTGRES_USER: ticketward
+      POSTGRES_PASSWORD_FILE: /run/secrets/tw_db_password
+      PGDATA: /var/lib/postgresql/data/pgdata
+    secrets:
+      - tw_db_password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
+    tmpfs:
+      - /var/run/postgresql:rw,nosuid,nodev,noexec,size=16m
+      - /tmp:rw,nosuid,nodev,noexec,size=64m
+    networks: [internal]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1g
+          pids: 256
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
+    <<: *hardening
+    user: redis
+    # requirepass is written to a tmpfs config file so the password never appears in
+    # the process list, `docker inspect` or this file.
+    command:
+      - sh
+      - -c
+      - >-
+        umask 077 &&
+        printf 'requirepass "%s"\n' "$$(cat /run/secrets/tw_redis_password)" > /tmp/redis.conf &&
+        exec redis-server /tmp/redis.conf --dir /data --appendonly yes
+        --protected-mode yes --maxmemory 256mb --maxmemory-policy noeviction
+    secrets:
+      - tw_redis_password
+    volumes:
+      - redisdata:/data
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,noexec,size=16m
+    networks: [internal]
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$(cat /run/secrets/tw_redis_password)\" redis-cli -h 127.0.0.1 ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 384m
+          pids: 128
+    restart: unless-stopped
+
+  migrate:
+    image: ticketward-api:${TW_IMAGE_TAG:-local}
+    build: *api-build
+    <<: *hardening
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      <<: *api-env
+    secrets:
+      - tw_db_password
+      - tw_redis_password # Settings validation in prod requires every secret to be present
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,noexec,size=16m
+    networks: [internal]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      disable: true
+    restart: "no"
+
+  api:
+    image: ticketward-api:${TW_IMAGE_TAG:-local}
+    build: *api-build
+    <<: *hardening
+    environment:
+      <<: *api-env
+      FORWARDED_ALLOW_IPS: ${TW_FORWARDED_ALLOW_IPS:-127.0.0.1}
+    secrets:
+      - tw_db_password
+      - tw_redis_password
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,noexec,size=64m
+    expose:
+      - "8000"
+    networks: [internal, edge]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-m", "ticketward.healthcheck"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512m
+          pids: 256
+    stop_grace_period: 25s
+    restart: unless-stopped
+
+  # --- Planned opt-in stacks (not part of `docker compose up`) --------------------------
+  # ollama:          # P3/P4, profile "ml": CPU SLM serving (GGUF + Modelfile), internal net only
+  #   image: ollama/ollama:<pin by digest>
+  #   profiles: [ml]
+  # mlflow:          # P3, profile "ml": tracking + registry
+  #   profiles: [ml]
+  # otel-collector:  # P7, profile "observability" (+ prometheus, grafana, tempo)
+  #   profiles: [observability]
+  # web / caddy:     # P8/P9: Next.js standalone + Caddy TLS reverse proxy (only public port)
+
+networks:
+  internal: # spec §12.11: Postgres and Redis (later Ollama, worker); no external route
+    internal: true
+  edge: {}
+
+volumes:
+  pgdata: {}
+  redisdata: {}
+
+secrets:
+  tw_db_password:
+    file: ./secrets/tw_db_password
+  tw_redis_password:
+    file: ./secrets/tw_redis_password

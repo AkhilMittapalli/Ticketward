@@ -1,0 +1,30 @@
+# Local development overrides. Compose loads this file AUTOMATICALLY with
+# `docker compose up`; passing any -f (e.g. compose.prod.yaml) disables it.
+#
+# Ports are published on 127.0.0.1 only (never 0.0.0.0) so the host can run tests,
+# migrations or `uvicorn --reload` against the containers.
+
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:5432:5432"
+
+  redis:
+    ports:
+      - "127.0.0.1:6379:6379"
+
+  migrate:
+    environment:
+      TW_ENV: dev
+
+  api:
+    environment:
+      TW_ENV: dev
+      TW_CORS_ORIGINS: http://localhost:3000
+    ports:
+      - "127.0.0.1:8000:8000"
+
+networks:
+  # Published ports need a non-internal network; still loopback-only (see above).
+  internal:
+    internal: false

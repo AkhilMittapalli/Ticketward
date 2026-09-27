@@ -1,0 +1,108 @@
+# Project-specific Semgrep rules (spec §12.8 "custom rules"). Run with:
+#   semgrep scan --config .semgrep.yml backend/src backend/alembic scripts ml/src
+rules:
+  - id: tw-no-exception-text-in-client-errors
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Never send exception text to clients (spec §0, §11). Raise a DomainError with a
+      client-safe public message; unexpected errors become a generic INTERNAL problem.
+    pattern-either:
+      - pattern: $CALL(..., detail=str($E), ...)
+      - pattern: $CALL(..., detail=repr($E), ...)
+      - pattern: $CALL(..., detail=f"...{$E}...", ...)
+
+  - id: tw-no-string-built-sql
+    languages: [python]
+    severity: ERROR
+    message: >-
+      SQL must use bound parameters (SQLAlchemy constructs or text() with :params); never
+      build SQL with f-strings, % or + (spec §12.3 A03).
+    pattern-either:
+      - pattern: text(f"...", ...)
+      - pattern: sqlalchemy.text(f"...", ...)
+      - pattern: $DB.execute(f"...", ...)
+      - pattern: $DB.execute("..." % $X, ...)
+      - pattern: $DB.execute("..." + $X, ...)
+      - pattern: $DB.execute("...".format(...), ...)
+      - pattern: op.execute(f"...", ...)
+
+  - id: tw-no-trust-remote-code
+    languages: [python]
+    severity: ERROR
+    message: Models and tokenizers load with trust_remote_code=False only (spec §12.3 A08).
+    pattern: $F(..., trust_remote_code=True, ...)
+
+  - id: tw-no-pickle-deserialization
+    languages: [python]
+    severity: ERROR
+    message: Use safetensors/JSON; pickle-based loading is forbidden for untrusted artifacts (A08).
+    pattern-either:
+      - pattern: pickle.load(...)
+      - pattern: pickle.loads(...)
+      - pattern: torch.load(...)
+
+  # --- spec v1.1 §12.8 / §12.10 additions -------------------------------------------------
+  - id: tw-no-span-record-exception
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Never record exceptions on spans: messages and stacks may contain PII (spec §12.10).
+      Set the span status and a sanitized error-type attribute instead.
+    pattern: $SPAN.record_exception(...)
+
+  - id: tw-no-exception-text-in-logs
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Exception text may contain PII or secrets: log error_type=type(exc).__name__, never
+      str(exc), repr(exc) or an f-string of it (spec §12.8, §12.10).
+    patterns:
+      - pattern-inside: |
+          try:
+              ...
+          except $EXC as $E:
+              ...
+      - pattern-either:
+          - pattern: $LOG.$METHOD(..., str($E), ...)
+          - pattern: $LOG.$METHOD(..., repr($E), ...)
+          - pattern: $LOG.$METHOD(..., $KW=str($E), ...)
+          - pattern: $LOG.$METHOD(..., $KW=repr($E), ...)
+          - pattern: $LOG.$METHOD(..., f"...{$E}...", ...)
+      - metavariable-regex:
+          metavariable: $METHOD
+          regex: ^(debug|info|warning|warn|error|exception|critical|fatal|log|msg)$
+
+  - id: tw-no-exception-text-in-span-attributes
+    languages: [python]
+    severity: ERROR
+    message: Span attributes follow the redaction allow-list; never str(exc) (spec §12.10).
+    patterns:
+      - pattern-inside: |
+          try:
+              ...
+          except $EXC as $E:
+              ...
+      - pattern-either:
+          - pattern: $SPAN.set_attribute($KEY, str($E))
+          - pattern: $SPAN.set_attribute($KEY, repr($E))
+
+  - id: tw-no-insecure-randomness-for-secrets
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Secrets, tokens, nonces, salts and keys come from the `secrets` module (CSPRNG),
+      never `random` or uuid4 (spec §12.8).
+    patterns:
+      - pattern-either:
+          - pattern: $VAR = random.$FUNC(...)
+          - pattern: $VAR = str(random.$FUNC(...))
+          - pattern: $VAR = uuid.uuid4(...)
+          - pattern: $VAR = str(uuid.uuid4(...))
+          - pattern: $VAR = uuid.uuid4(...).hex
+          - pattern: $VAR = uuid4(...)
+          - pattern: $VAR = str(uuid4(...))
+          - pattern: $VAR = uuid4(...).hex
+      - metavariable-regex:
+          metavariable: $VAR
+          regex: (?i).*(token|secret|nonce|password|passwd|salt|key|csrf|otp).*

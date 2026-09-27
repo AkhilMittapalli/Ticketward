@@ -1,0 +1,16 @@
+# Code owners (spec v1.1 §14.4, A-26): branch protection requires the status checks but no
+# approvals, since a solo owner cannot approve their own PRs; review is a documented
+# self-review against the PR checklist. CODEOWNERS still routes review requests.
+
+*                                   @AkhilMittapalli
+
+# Safety- and security-critical paths: changes need explicit owner review.
+/backend/src/ticketward/domain/    @AkhilMittapalli
+/backend/src/ticketward/core/      @AkhilMittapalli
+/backend/src/ticketward/api/       @AkhilMittapalli
+/backend/alembic/                   @AkhilMittapalli
+/schemas/                           @AkhilMittapalli
+/.github/                           @AkhilMittapalli
+/compose*.yaml                      @AkhilMittapalli
+/infra/                             @AkhilMittapalli
+/SECURITY.md                        @AkhilMittapalli
