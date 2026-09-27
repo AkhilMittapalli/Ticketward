@@ -1,0 +1,13 @@
+# Dated generator price table (USD per million tokens) used for token accounting and the budget
+# cap. Source: docs/legal/generator-terms-2026-09-27.md (vendor pages accessed 2026-09-27).
+# Prices change: add a new dated file (datagen_prices.v2.yaml) instead of editing this one, and
+# point ml/configs/datagen.yaml at it. A host/model pair missing here cannot run (no budget).
+version: prices.v1
+as_of: 2026-09-27
+currency: USD
+unit: per_million_tokens
+source: docs/legal/generator-terms-2026-09-27.md
+entries:
+  - {provider: deepinfra, api_model_id: openai/gpt-oss-120b, input_per_mtok: "0.037", output_per_mtok: "0.17"}
+  - {provider: groq, api_model_id: openai/gpt-oss-120b, input_per_mtok: "0.15", output_per_mtok: "0.60"}
+  - {provider: mistral, api_model_id: mistral-large-3-25-12, input_per_mtok: "0.50", output_per_mtok: "1.50"}

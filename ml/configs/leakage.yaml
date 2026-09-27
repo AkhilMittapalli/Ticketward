@@ -33,7 +33,7 @@ kb: # C5
   report_run_tokens: 12
 
 protected: # C6
-  strings_file: data/spec/protected_strings.v1.txt
+  strings_file: data/spec/protected_strings.txt
   jaccard: 0.60
   span_words: 8
   containment_min_words: 5 # stricter than the spec: a whole guideline example of 5+ words also flags

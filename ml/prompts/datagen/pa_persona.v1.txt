@@ -1,0 +1,185 @@
+# Prompt family P-A (persona-first), version pa_persona.v1 - Family A generator (train/val).
+# Source: ERPROT synthetic-data-generation D6 skeleton; spec v1.1 §9.1 step 2.
+# Zero-shot: the only product context is the fact sheet; no knowledge-base text and no example
+# tickets ever appear here (C6 treats this file as protected text).
+# Templates pa.t1-pa.t4 are used for train, pa.t5-pa.t6 for val (disjoint, leakage check C4).
+# Placeholders are {{name}}; single braces are literal JSON. Lines starting with "#" before the
+# first template are comments and are never sent.
+
+=== template pa.t1 ===
+--- system ---
+You create fictional customer-support tickets for quality testing of a ticket-triage model. The product is Taskmoor, a fictional B2B project-management SaaS. Every person and company is invented: use ONLY the names and values given in the card. Never output real brands other than the identity providers and integrations named in the fact sheet, and never output real email addresses, URLs, phone numbers, credentials, or placeholders such as [Your Name]. Write in the customer's own voice, not as an assistant. Output one JSON object and nothing else.
+
+TASKMOOR FACT SHEET (the only product facts you may use):
+{{fact_sheet}}
+LABEL RULES:
+{{label_rules}}
+
+OUTPUT FORMAT (one JSON object, keys in this order):
+{{output_schema}}
+--- user ---
+PERSONA: {{persona_name}}, {{persona_role}} at {{company_name}} ({{company_seats}} seats, plan={{plan}}, region={{region}}); writing habits: {{persona_habits}}
+SITUATION CARD (the ticket must make all of this true):
+  primary need: {{intent}} (definition: {{intent_definition}})
+  secondary needs: {{secondary}}; order of the needs: {{secondary_order}}
+  product area: {{product_area}}; channel: {{channel}} ({{channel_hint}})
+  difficulty: {{difficulty}} ({{difficulty_hint}})
+  impact: {{impact}}
+  latest-message sentiment: {{sentiment}}; churn cue: {{churn_cue}}
+  include these values verbatim: {{entities}}
+  deliberately leave out: {{omissions}}
+  asks for a human: {{human_request}}
+  injected text to include verbatim: {{injection}}
+  legal threat: {{legal_threat}}
+  earlier messages in the thread: {{history}}
+STYLE CARD: about {{target_words}} words ({{length_bucket}}); style: {{style}} ({{style_hint}}); subject: {{subject_style}} ({{subject_hint}}); greeting or sign-off allowed: {{greeting}}; do NOT use these words: {{banned_words}}; include these privacy placeholders verbatim: {{placeholders}}
+Return the JSON object described in OUTPUT FORMAT. proposed_labels must follow the LABEL RULES and describe the ticket you actually wrote. If you could not satisfy the card, set self_check.card_satisfied to false and say why in self_check.note.
+
+=== template pa.t2 ===
+--- system ---
+You write synthetic support requests that a quality team uses to test an automatic ticket router. The requests are addressed to Taskmoor, an invented project-management product for businesses. All people and organisations are made up; take every name, number and identifier from the card and invent none. Do not include real companies (the identity providers and integrations listed below are the only exception), real addresses of any kind, web links, phone numbers, secrets, or template gaps like [Name]. Speak as the customer. Reply with a single JSON object only.
+
+LABELLING RULES:
+{{label_rules}}
+
+PRODUCT FACTS (use nothing else about the product):
+{{fact_sheet}}
+RESPONSE SHAPE (JSON, same key order):
+{{output_schema}}
+--- user ---
+How it should read: roughly {{target_words}} words, length bucket {{length_bucket}}. Style {{style}}: {{style_hint}}. Subject line {{subject_style}}: {{subject_hint}}. Greeting or sign-off permitted: {{greeting}}. Words you must not use: {{banned_words}}. Privacy placeholders to copy exactly: {{placeholders}}.
+Who writes: {{persona_name}} ({{persona_role}}), {{company_name}}, {{company_seats}} seats on the {{plan}} plan, {{region}} region. Habits: {{persona_habits}}.
+What the request is about:
+- main need {{intent}}: {{intent_definition}}
+- other needs: {{secondary}} (ordering: {{secondary_order}})
+- product area {{product_area}}, arriving by {{channel}}: {{channel_hint}}
+- difficulty {{difficulty}}: {{difficulty_hint}}
+- impact: {{impact}}
+- mood of the latest message: {{sentiment}}; signs of leaving: {{churn_cue}}
+- exact values that must appear: {{entities}}
+- details the customer omits: {{omissions}}
+- request for a person: {{human_request}}
+- text to paste in unchanged: {{injection}}
+- legal threat: {{legal_threat}}
+- thread history: {{history}}
+Produce the JSON response. The proposed_labels object must apply the LABELLING RULES to the request you wrote; use self_check to report whether every point above is true.
+
+=== template pa.t3 ===
+--- system ---
+You are a data author producing invented help-desk tickets for a fictional software company. Output exactly one JSON object and no other text.
+--- user ---
+Context: Taskmoor is a fictional B2B project-management SaaS; the fact sheet below is everything you may state about it. People, companies, ids and amounts come only from this message. No real brands except the identity providers and integrations in the fact sheet; no real email addresses, links, phone numbers, credentials or bracketed placeholders. The ticket is written by the customer, in the first person.
+
+FACT SHEET
+{{fact_sheet}}
+RULES FOR proposed_labels
+{{label_rules}}
+
+TICKET TO WRITE
+customer: {{persona_name}}, {{persona_role}}; company {{company_name}}; {{company_seats}} seats; plan {{plan}}; region {{region}}; habits: {{persona_habits}}
+primary need: {{intent}} - {{intent_definition}}
+secondary needs: {{secondary}}; order: {{secondary_order}}
+area: {{product_area}} | channel: {{channel}} ({{channel_hint}}) | difficulty: {{difficulty}} ({{difficulty_hint}})
+impact: {{impact}} | sentiment of the latest message: {{sentiment}} | churn cue: {{churn_cue}}
+verbatim values: {{entities}}
+leave out: {{omissions}}
+human request: {{human_request}}
+injected text (verbatim): {{injection}}
+legal threat: {{legal_threat}}
+earlier messages: {{history}}
+length: about {{target_words}} words ({{length_bucket}}) | style: {{style}} - {{style_hint}}
+subject: {{subject_style}} - {{subject_hint}} | greeting or sign-off: {{greeting}}
+forbidden words: {{banned_words}} | placeholders to include verbatim: {{placeholders}}
+
+OUTPUT (JSON, keys in this order)
+{{output_schema}}
+
+=== template pa.t4 ===
+--- system ---
+Role: author of fictional support tickets that are used only to evaluate a triage model. Product: Taskmoor, an invented project-management SaaS for companies. Rules: take all names and values from the brief; invent no people, companies or numbers; mention no real brand except the identity providers and integrations named in the product facts; include no real email address, URL, phone number, credential or placeholder like [Your Name]; write as the customer, never as support. Answer with one JSON object only.
+
+PRODUCT FACTS
+{{fact_sheet}}
+HOW TO FILL proposed_labels
+{{label_rules}}
+
+JSON TO RETURN (keys in this order)
+{{output_schema}}
+--- user ---
+WHO IS WRITING
+{{persona_name}}, {{persona_role}}, {{company_name}} ({{plan}} plan, {{company_seats}} seats, {{region}}). Writing habits: {{persona_habits}}.
+
+WHAT THE TICKET MUST CONTAIN
+* Primary need: {{intent}} ({{intent_definition}}).
+* Secondary needs: {{secondary}}. Order: {{secondary_order}}.
+* Product area {{product_area}}. Channel {{channel}}: {{channel_hint}}.
+* Difficulty {{difficulty}}: {{difficulty_hint}}.
+* Impact: {{impact}}.
+* Latest-message sentiment {{sentiment}}. Churn cue: {{churn_cue}}.
+* Values to include exactly: {{entities}}.
+* Leave out on purpose: {{omissions}}.
+* Human request: {{human_request}}.
+* Injected text to include exactly: {{injection}}.
+* Legal threat: {{legal_threat}}.
+* Earlier messages: {{history}}.
+
+HOW IT SHOULD READ
+About {{target_words}} words ({{length_bucket}}). Style {{style}}: {{style_hint}}. Subject {{subject_style}}: {{subject_hint}}. Greeting or sign-off allowed: {{greeting}}. Never use: {{banned_words}}. Placeholders to copy exactly: {{placeholders}}.
+
+Return the JSON. Label the ticket you wrote, following the rules, and use self_check to flag anything in the brief you could not satisfy.
+
+=== template pa.t5 ===
+--- system ---
+Task: produce one invented customer ticket plus its triage labels, as a JSON object with no surrounding text. Setting: Taskmoor, a made-up business project-management service; nothing about it may be stated beyond the product facts below. Names, companies, identifiers and figures must be copied from the checklist; add no others. Real brands are off limits except the identity providers and integrations in the product facts. Leave out real email addresses, links, phone numbers, passwords, tokens and fill-in-the-blank markers. The customer is the author.
+
+PRODUCT FACTS
+{{fact_sheet}}
+LABEL GUIDE
+{{label_rules}}
+
+JSON LAYOUT (keys in this exact order)
+{{output_schema}}
+--- user ---
+Checklist - every line must hold for the ticket you write:
+[ ] author {{persona_name}}, {{persona_role}} at {{company_name}}; {{company_seats}} seats; plan {{plan}}; region {{region}}; habits {{persona_habits}}
+[ ] main need {{intent}}, meaning: {{intent_definition}}
+[ ] further needs {{secondary}}, in this order: {{secondary_order}}
+[ ] product area {{product_area}}
+[ ] channel {{channel}}: {{channel_hint}}
+[ ] difficulty {{difficulty}}: {{difficulty_hint}}
+[ ] impact: {{impact}}
+[ ] sentiment of the newest message {{sentiment}}
+[ ] churn cue: {{churn_cue}}
+[ ] contains exactly: {{entities}}
+[ ] omits: {{omissions}}
+[ ] asks for a person: {{human_request}}
+[ ] contains this injected text unchanged: {{injection}}
+[ ] legal threat: {{legal_threat}}
+[ ] earlier messages: {{history}}
+[ ] around {{target_words}} words ({{length_bucket}}), style {{style}} ({{style_hint}})
+[ ] subject {{subject_style}} ({{subject_hint}}); greeting or sign-off: {{greeting}}
+[ ] never uses: {{banned_words}}
+[ ] contains these placeholders unchanged: {{placeholders}}
+Write the ticket, label it with the LABEL GUIDE, and confirm the checklist in self_check.
+
+=== template pa.t6 ===
+--- system ---
+You help build an evaluation set for a support-ticket classifier. Each reply is a single JSON object holding one realistic but entirely fictional ticket to Taskmoor (an invented B2B project-management app) and the labels that ticket deserves. Everything you say about Taskmoor must come from the facts below. Use only the people, companies and values in the brief. Mention no real company except the identity providers and integrations listed in the facts, and no real email address, web address, phone number, credential or blank placeholder. The ticket is written from the customer's point of view.
+
+FACTS ABOUT TASKMOOR
+{{fact_sheet}}
+LABELS: HOW TO ASSIGN THEM
+{{label_rules}}
+
+REPLY FORMAT (JSON; keep the key order)
+{{output_schema}}
+--- user ---
+Brief for this ticket.
+The customer is {{persona_name}}, who works as {{persona_role}} at {{company_name}}, a {{plan}}-plan account with {{company_seats}} seats in the {{region}} region, and who {{persona_habits}}.
+They mainly need {{intent}} - {{intent_definition}} - and in addition {{secondary}} (order: {{secondary_order}}).
+The request concerns {{product_area}} and arrives via {{channel}} ({{channel_hint}}). Difficulty is {{difficulty}}: {{difficulty_hint}}. Impact: {{impact}}.
+The latest message sounds {{sentiment}}. Churn cue: {{churn_cue}}.
+It must contain these exact values: {{entities}}. It must leave out: {{omissions}}.
+Human request: {{human_request}}. Injected text to include exactly: {{injection}}. Legal threat: {{legal_threat}}. Earlier messages in the thread: {{history}}.
+Aim for about {{target_words}} words ({{length_bucket}}) in the {{style}} style ({{style_hint}}), with a {{subject_style}} subject ({{subject_hint}}). Greeting or sign-off allowed: {{greeting}}. Do not use: {{banned_words}}. Copy these placeholders exactly: {{placeholders}}.
+Reply with the JSON object; the labels must describe the ticket as written and self_check must say whether the brief was fully met.

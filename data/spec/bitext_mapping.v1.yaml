@@ -1,0 +1,134 @@
+# Bitext OOD mapping v1 (spec v1.1 §9.1 step 5, A-13; ERPROT bitext-ood-dataset D1-D6). Normative.
+# Both datasets are CDLA-Sharing-1.0: this repository commits only this mapping, the builder
+# (tw_ml.datagen.bitext) and row pointers (evals/ood/test_ood.v1.pointers.jsonl), never Bitext text.
+# Category values come from the data, not the dataset card (the card lists different names).
+version: bitext_mapping.v1
+seed: 20260926 # numpy.random.default_rng(20260926) shuffles each group (ERPROT D5)
+
+sources:
+  cs:
+    hf_id: bitext/Bitext-customer-support-llm-chatbot-training-dataset
+    revision: 430d1a89bd93bd1fa23c16f29dd53e73f0087443
+    tag_column: flags
+    license: CDLA-Sharing-1.0
+  tel:
+    hf_id: bitext/Bitext-telco-llm-chatbot-training-dataset
+    revision: eacc593a96d75ec6da0887f081ff0dfc442fccab
+    tag_column: tags
+    license: CDLA-Sharing-1.0
+
+# Tiers: T1 strict (headline OOD metrics), T2 lenient (optional appendix, never mixed with T1),
+# probe (maps to a non-intent field or a "must not be" negative), excluded (not sampled).
+mapping:
+  cs:
+    cancel_order: {category: ORDER, target: null, tier: excluded, reason: "e-commerce purchase-order cancellation; no orders in Taskmoor"}
+    change_order: {category: ORDER, target: null, tier: excluded, reason: "modify an e-commerce order"}
+    change_shipping_address: {category: SHIPPING, target: null, tier: excluded, reason: "physical shipping"}
+    check_cancellation_fee: {category: CANCEL, target: plan_pricing_inquiry, tier: T2, reason: "fee question is pricing mechanics; some annotators would pick cancellation"}
+    check_invoice: {category: INVOICE, target: how_to_question, tier: T2, reason: "locate or view an invoice (docs-answerable)"}
+    check_payment_methods: {category: PAYMENT, target: how_to_question, tier: T2, reason: "accepted payment methods; could be pricing"}
+    check_refund_policy: {category: REFUND, target: null, tier: excluded, reason: "torn between refund_request and how-to/pricing"}
+    complaint: {category: FEEDBACK, target: null, tier: excluded, reason: "complaint with no issue stated"}
+    contact_customer_service: {category: CONTACT, target: null, tier: excluded, reason: "mixes contact-hours questions with requests for support"}
+    contact_human_agent: {category: CONTACT, target: other_unclear, tier: probe, reason: "explicit request for a person (P-H)"}
+    create_account: {category: ACCOUNT, target: null, tier: excluded, reason: "consumer self-sign-up; Taskmoor accounts are org-provisioned"}
+    delete_account: {category: ACCOUNT, target: cancellation_request, tier: T2, reason: "consumer account closure; superseded by TEL cancel_plan for T1"}
+    delivery_options: {category: DELIVERY, target: null, tier: excluded, reason: "physical delivery"}
+    delivery_period: {category: DELIVERY, target: null, tier: excluded, reason: "delivery times"}
+    edit_account: {category: ACCOUNT, target: how_to_question, tier: T2, reason: "edit profile data (usage how-to)"}
+    get_invoice: {category: INVOICE, target: how_to_question, tier: T2, reason: "download or receive an invoice"}
+    get_refund: {category: REFUND, target: refund_request, tier: T1, reason: "requests money back (not a duplicate)"}
+    newsletter_subscription: {category: SUBSCRIPTION, target: how_to_question, tier: probe, reason: "newsletter (un)subscribe; hard negative for cancellation (P-N)"}
+    payment_issue: {category: PAYMENT, target: billing_payment_failure, tier: T1, reason: "cannot pay or card declined"}
+    place_order: {category: ORDER, target: null, tier: excluded, reason: "buying goods"}
+    recover_password: {category: ACCOUNT, target: account_access_issue, tier: T1, reason: "password or PIN recovery = password reset"}
+    registration_problems: {category: ACCOUNT, target: account_access_issue, tier: T2, reason: "sign-up errors; could be bug_report"}
+    review: {category: FEEDBACK, target: null, tier: excluded, reason: "how to leave a review"}
+    set_up_shipping_address: {category: SHIPPING, target: null, tier: excluded, reason: "physical shipping"}
+    switch_account: {category: ACCOUNT, target: plan_pricing_inquiry, tier: T2, reason: "mixes tier changes with profile switching"}
+    track_order: {category: ORDER, target: null, tier: excluded, reason: "order tracking"}
+    track_refund: {category: REFUND, target: refund_request, tier: T2, reason: "status of an expected refund"}
+  tel:
+    dispute_invoice: {category: BILLING, target: refund_request, tier: T2, reason: "unrecognized charges; could be duplicate charge or fraud"}
+    invoices: {category: BILLING, target: how_to_question, tier: T2, reason: "get or download a bill"}
+    get_compensation: {category: COMPLAINTS, target: refund_request, tier: T2, reason: "compensation after service problems"}
+    report_poor_signal_coverage: {category: COMPLAINTS, target: null, tier: excluded, reason: "local radio coverage, not a widespread outage"}
+    report_problem: {category: COMPLAINTS, target: bug_report, tier: T2, reason: "vague fault; could be an outage"}
+    check_excess_data_charges: {category: CONSUMPTION, target: null, tier: excluded, reason: "telco overage"}
+    check_usage: {category: CONSUMPTION, target: null, tier: excluded, reason: "telco metering"}
+    set_usage_limits: {category: CONSUMPTION, target: null, tier: excluded, reason: "telco caps"}
+    customer_service: {category: CONTACT, target: null, tier: excluded, reason: "contact info or reaching support"}
+    human_agent: {category: CONTACT, target: other_unclear, tier: probe, reason: "explicit request for a person (P-H)"}
+    check_mobile_payments: {category: PAYMENT, target: null, tier: excluded, reason: "telco app payment history"}
+    payment_methods: {category: PAYMENT, target: how_to_question, tier: T2, reason: "how to pay or accepted methods"}
+    pay: {category: PAYMENT, target: null, tier: excluded, reason: "action vs how-to ambiguity"}
+    schedule_payments: {category: PAYMENT, target: how_to_question, tier: T2, reason: "scheduling or auto-pay setup"}
+    activate_call_management_services: {category: SERVICES, target: null, tier: excluded, reason: "telco feature"}
+    activate_phone: {category: SERVICES, target: null, tier: excluded, reason: "device activation"}
+    activate_roaming: {category: SERVICES, target: null, tier: excluded, reason: "roaming"}
+    check_signal_coverage: {category: SERVICES, target: null, tier: excluded, reason: "coverage availability"}
+    deactivate_call_management_services: {category: SERVICES, target: null, tier: excluded, reason: "telco feature"}
+    deactivate_phone: {category: SERVICES, target: null, tier: excluded, reason: "device deactivation, not a plan cancellation"}
+    install_internet: {category: SERVICES, target: null, tier: excluded, reason: "home installation"}
+    cancel_plan: {category: SUBSCRIPTION, target: cancellation_request, tier: T1, reason: "cancel or terminate a plan or contract"}
+    change_plan: {category: SUBSCRIPTION, target: plan_pricing_inquiry, tier: T1, reason: "change the plan = upgrade/downgrade mechanics; owner review drops downgrade-to-free items"}
+    change_provider: {category: SUBSCRIPTION, target: cancellation_request, tier: T2, reason: "switching provider = implicit churn; some items may be porting in"}
+    check_cancellation_fee: {category: SUBSCRIPTION, target: plan_pricing_inquiry, tier: T2, reason: "early-exit fees"}
+    sign_up_for_plan: {category: SUBSCRIPTION, target: plan_pricing_inquiry, tier: T2, reason: "buying a new plan"}
+
+# test_ood.v1 composition (A-13): 5 strict classes x 80 + 50 human-request probes + 50 hard negatives.
+groups:
+  S1: {tier: T1, gold: {intent: account_access_issue}, sources: [{source: cs, intent: recover_password, quota: 80}]}
+  S2: {tier: T1, gold: {intent: billing_payment_failure}, sources: [{source: cs, intent: payment_issue, quota: 80}]}
+  S3: {tier: T1, gold: {intent: refund_request}, sources: [{source: cs, intent: get_refund, quota: 80}]}
+  S4: {tier: T1, gold: {intent: cancellation_request}, sources: [{source: tel, intent: cancel_plan, quota: 80}]}
+  S5: {tier: T1, gold: {intent: plan_pricing_inquiry}, sources: [{source: tel, intent: change_plan, quota: 80}]}
+  P-H:
+    tier: probe
+    probe: P-H
+    gold: {intent: other_unclear, customer_requested_human: true}
+    sources:
+      - {source: cs, intent: contact_human_agent, quota: 25}
+      - {source: tel, intent: human_agent, quota: 25}
+  P-N:
+    tier: probe
+    probe: P-N
+    gold: {intent: how_to_question, not_intent: cancellation_request}
+    sources: [{source: cs, intent: newsletter_subscription, quota: 50, filter: pn_cancel}]
+
+filters:
+  pn_cancel: '\b(cancel\w*|unsubscrib\w*)\b' # keep only utterances with cancel*/unsubscrib* (case-insensitive)
+
+dedup_jaccard: 0.70 # skip near-duplicates of already-selected items in the group (char-5, same normalization)
+
+wrap: # every item becomes a TicketPayload with neutral, constant metadata (ERPROT D6)
+  subject: Support request
+  channel: chat_transcript
+  customer_tier: business
+  received_at: "2026-09-26T00:00:00+00:00"
+
+# Placeholder fills (ERPROT D6). A placeholder not listed here fails the build: add it explicitly.
+# Fill kinds: literal, choice (seeded), digits (seeded, with prefix), amount (seeded range), date.
+placeholders:
+  Person Name: {literal: "<PERSON_1>"}
+  Client First Name: {literal: "<PERSON_1>"}
+  Client Last Name: {literal: "<PERSON_1>"}
+  Salutation: {literal: "<PERSON_1>"}
+  Customer Support Email: {literal: "<EMAIL_1>"}
+  Customer Support Phone Number: {literal: "<PHONE_1>"}
+  Website URL: {literal: the website}
+  Account Type: {choice: [standard, premium, pro, gold, platinum, freemium]}
+  Account Category: {choice: [standard, premium, pro, gold, platinum, freemium]}
+  Order Number: {digits: 5, prefix: "#"}
+  Invoice Number: {digits: 5, prefix: "#"}
+  Currency Symbol: {literal: "$"}
+  Refund Amount: {amount: [10.00, 500.00]}
+  Money Amount: {amount: [10.00, 500.00]}
+  Date: {date: "2026"}
+  Date Range: {literal: last month}
+  Settings: {literal: settings}
+  Live Chat Support: {literal: live chat}
+  Online Customer Support Channel: {literal: online support}
+  Upgrade Account: {literal: upgrade}
+  Profile: {literal: profile}
+  Profile Type: {literal: work profile}

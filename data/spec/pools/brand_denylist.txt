@@ -1,0 +1,66 @@
+# Brand denylist for generated company and competitor names (spec §3 trademark hygiene,
+# ERPROT synthetic-data-generation D3). One brand per line, matched case-insensitively:
+# brands of 5+ characters as substrings, shorter ones as whole words (tw_ml.datagen.pools).
+# Extend it whenever a name collision is found; the pools must then be rebuilt.
+# Project-management and work-management products
+asana
+trello
+jira
+atlassian
+monday
+clickup
+notion
+basecamp
+wrike
+smartsheet
+airtable
+todoist
+teamwork
+linear
+podio
+taskworld
+nifty
+hive
+zoho
+# Support and CRM products
+zendesk
+freshdesk
+intercom
+servicenow
+salesforce
+hubspot
+# Large technology companies and common SaaS brands
+microsoft
+google
+apple
+amazon
+meta
+facebook
+slack
+zoom
+stripe
+github
+gitlab
+zapier
+dropbox
+adobe
+ibm
+oracle
+sap
+intel
+nvidia
+tesla
+netflix
+spotify
+uber
+airbnb
+shopify
+okta
+onelogin
+twilio
+workday
+# Names this project must never reuse
+taskmoor
+clouddesk
+resolveflow
+ticketward

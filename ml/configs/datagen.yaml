@@ -1,0 +1,68 @@
+# Datagen provider settings (tw_ml.datagen.providers). Spec v1.1 §9.1 (A-01); hosts, model ids and
+# prices verified in docs/legal/generator-terms-2026-09-27.md (accessed 2026-09-27).
+# Environment variables override the host defaults: TW_DATAGEN_{A,B}_HOST, _BASE_URL, _MODEL, and
+# the key TW_DATAGEN_{A,B}_API_KEY (required for a real run; never stored in any file).
+version: datagen.v1
+
+# Every generated record points at the terms snapshot that applied when it was created
+# (provenance.terms_snapshot_id). A real run refuses to start when the snapshot is older than
+# terms_max_age_days, unless the owner re-reviewed the terms and passes --terms-reviewed.
+terms_snapshot_id: docs/legal/generator-terms-2026-09-27.md
+terms_max_age_days: 30
+
+price_table: ml/configs/datagen_prices.v1.yaml
+budget_usd_total: "15.00" # A-01: all generation incl. pilots and regeneration
+max_attempts_per_cell: 2 # ERPROT D4: regenerate once, then quarantine
+
+http:
+  timeout_s: 120
+  connect_timeout_s: 10
+  max_retries: 5 # bounded; full-jitter exponential backoff between attempts
+  backoff_base_s: 1.0
+  backoff_cap_s: 30.0
+  retry_after_cap_s: 120.0 # an honoured Retry-After header never waits longer than this
+
+families:
+  A: # train/val: openai/gpt-oss-120b (Apache-2.0), prompt family P-A
+    generator_family: openai_gpt_oss
+    open_weights_model: openai/gpt-oss-120b
+    allowed_model_patterns: [gpt-oss-120b]
+    default_host: deepinfra # primary: cheapest confirmed host
+    hosts:
+      deepinfra:
+        base_url: https://api.deepinfra.com/v1/openai
+        api_model_id: openai/gpt-oss-120b
+      groq: # fallback (TW_DATAGEN_A_HOST=groq)
+        base_url: https://api.groq.com/openai/v1
+        api_model_id: openai/gpt-oss-120b
+    requests:
+      # gpt-oss model-card sampling (temperature 1.0, top_p 1.0) and low reasoning effort (ERPROT D1).
+      # max_tokens covers reasoning + visible output; verify both parameters in the pilot (P1.30).
+      default:
+        temperature: 1.0
+        top_p: 1.0
+        max_tokens: 2000
+        response_format: json_object
+        seed_param: seed
+        extra: {reasoning_effort: low}
+  B: # test_synth: Mistral Large 3 (Apache-2.0), prompt family P-B (two stages); never Claude
+    generator_family: mistral
+    open_weights_model: mistralai/Mistral-Large-3-675B-Instruct-2512
+    allowed_model_patterns: [mistral-large]
+    default_host: mistral
+    hosts:
+      mistral:
+        base_url: https://api.mistral.ai/v1
+        api_model_id: mistral-large-3-25-12
+    requests:
+      # ERPROT D1 initial values: stage 1 ~0.5, stage 2 ~0.8; tune in the pilot.
+      stage1:
+        temperature: 0.5
+        max_tokens: 900
+        response_format: json_object
+        seed_param: random_seed
+      stage2:
+        temperature: 0.8
+        max_tokens: 1400
+        response_format: json_object
+        seed_param: random_seed

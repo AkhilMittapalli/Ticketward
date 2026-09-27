@@ -1,0 +1,150 @@
+[project]
+name = "tw-ml"
+version = "0.1.0.dev0"
+description = "Ticketward offline ML: dataset generation, training, evaluation and export."
+readme = "README.md"
+license = "Apache-2.0"
+authors = [{ name = "Akhil Mittapalli" }]
+# 3.12 locally/Kaggle, 3.13 on Colab (A-03). The backend stays pinned to 3.12 only.
+requires-python = ">=3.12,<3.14"
+classifiers = [
+    "Private :: Do Not Upload",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Typing :: Typed",
+]
+# Needed by every subpackage (contracts, configs). Everything else lives in a group.
+dependencies = [
+    "pydantic>=2.13",
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+tw-datagen = "tw_ml.datagen.__main__:main"
+
+# PEP 735 dependency groups. `uv sync --locked` installs the default groups below; the
+# planned P2/P3 groups are opt-in (`--group train`, `--group export`).
+[dependency-groups]
+datagen = [ # P1: synthetic tickets, label QA, leakage checks, Bitext OOD mapping
+    "datasketch==2.0.0", # exact pin (ERPROT leakage-and-dedup: 2.0.0 changed the MinHash scheme)
+    "httpx>=0.28",
+    "numpy>=2.0",
+    "pydantic>=2.13",
+    "pyyaml>=6.0",
+    "scipy>=1.18", # sparse exact Jaccard: the leakage CI truth path (ERPROT D10)
+]
+eval = [ # P2/P10: statistics and baselines
+    "numpy>=2.0",
+    "scikit-learn>=1.9",
+    "scipy>=1.18",
+]
+bitext = [ # P1.23 OOD builder only; downloads happen solely when the owner runs it
+    "datasets>=3.0",
+    "huggingface-hub>=0.26,<2",
+]
+train = [ # P3 (planned): torch is NOT listed; the platform's CUDA torch is used (A-03)
+    "accelerate>=1.0",
+    "bitsandbytes>=0.44",
+    "datasets>=3.0",
+    "huggingface-hub>=0.26,<2",
+    "peft>=0.13",
+    "transformers>=4.46",
+    "trl>=0.12",
+]
+export = [ # P3 (planned): adapter merge, GGUF conversion, HF Hub publishing
+    "huggingface-hub>=0.26,<2",
+    "jinja2>=3.1",
+    "safetensors>=0.4",
+]
+dev = [
+    "hypothesis>=6.168",
+    "mypy>=2.3",
+    "pytest>=9.1",
+    "pytest-cov>=7.1",
+    "ruff>=0.16",
+    "scipy-stubs>=1.18",
+    "types-PyYAML>=6.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.9.6,<0.10"]
+build-backend = "uv_build"
+
+[tool.uv]
+# R-13: keep the environment outside OneDrive (UV_PROJECT_ENVIRONMENT, see README).
+required-version = ">=0.9.6"
+default-groups = ["datagen", "eval", "dev"]
+# A-03 / ADR-0003: no torch or CUDA artifact may enter this lock. The never-true marker
+# removes torch (and with it every nvidia-*/triton wheel) from resolution; peft,
+# accelerate and bitsandbytes then use the torch that Colab/Kaggle preinstall.
+override-dependencies = ["torch; sys_platform == 'never'"]
+
+# --------------------------------------------------------------------------- ruff
+[tool.ruff]
+# Same rule set and style as the backend (spec §14.2); only ml-specific paths differ.
+extend = "../backend/pyproject.toml"
+src = ["src", "tests"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["tw_ml"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+    "D",       # test names document intent
+    "ANN401",  # fixture factories take **overrides: Any
+    "S101",    # assert is the pytest idiom
+    "S105",    # fake credentials are expected in tests
+    "S106",
+    "PLR2004", # literal expectations are clearer inline
+]
+
+# --------------------------------------------------------------------------- mypy
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+files = ["src", "tests"]
+warn_unreachable = true
+enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool", "possibly-undefined"]
+pretty = true
+
+[[tool.mypy.overrides]]
+# Untyped third-party packages. datasketch is typed only loosely; the optional
+# sentence-transformers / datasets imports are lazy and never required.
+module = ["datasketch.*", "sklearn.*", "sentence_transformers.*", "datasets.*"]
+ignore_missing_imports = true
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+
+# --------------------------------------------------------------------------- pytest
+[tool.pytest.ini_options]
+minversion = "9.0"
+testpaths = ["tests"]
+addopts = ["-ra", "--strict-markers", "--strict-config", "--import-mode=importlib"]
+xfail_strict = true
+filterwarnings = ["error"]
+
+# --------------------------------------------------------------------------- coverage
+[tool.coverage.run]
+branch = true
+source = ["tw_ml"]
+
+[tool.coverage.report]
+# Gate for the P1 package (tw_ml.datagen); train/eval/export are empty until P2/P3.
+fail_under = 85
+show_missing = true
+skip_empty = true
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "@(typing\\.)?overload",
+    "class .*\\(.*Protocol.*\\):",
+    "if __name__ == .__main__.:",
+]
+
+# --------------------------------------------------------------------------- bandit
+[tool.bandit]
+exclude_dirs = ["tests"]

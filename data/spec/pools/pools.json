@@ -1,0 +1,36 @@
+{
+  "generator": "tw_ml.datagen.pools",
+  "invoice_prefixes": {
+    "hard": "INV-H",
+    "test": "INV-T",
+    "train": "INV-A",
+    "val": "INV-V"
+  },
+  "seed": 20260927,
+  "sizes": {
+    "hard": {
+      "companies": 40,
+      "competitors": 4,
+      "injections": 8,
+      "personas": 80
+    },
+    "test": {
+      "companies": 160,
+      "competitors": 6,
+      "injections": 16,
+      "personas": 320
+    },
+    "train": {
+      "companies": 400,
+      "competitors": 12,
+      "injections": 40,
+      "personas": 800
+    },
+    "val": {
+      "companies": 80,
+      "competitors": 4,
+      "injections": 8,
+      "personas": 150
+    }
+  }
+}

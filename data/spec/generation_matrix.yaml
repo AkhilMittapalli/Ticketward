@@ -1,0 +1,354 @@
+# Generation matrix v1 (spec v1.1 §9.1.1, §9.3; A-10, A-11; ERPROT synthetic-data-generation D3).
+#
+# Read by tw_ml.datagen.matrix. The sampler is seeded and deterministic: the same file + seed
+# always yields the same plan (cells, ids, templates, pools, entity values).
+# Proportions are initial proposals, tuned after the 50 P-A + 50 P-B pilot (P1.30).
+# Every enum value is checked against schemas/json/taxonomy.schema.json (tests/test_taxonomy.py).
+matrix_version: gm.v1
+taxonomy_version: "2026-09-v1"
+seed: 20260927
+
+splits:
+  train:
+    n: 3600
+    family: A
+    generator_family: openai_gpt_oss
+    prompt_family: P-A
+    prompt_file: pa_persona.v1
+    templates: [pa.t1, pa.t2, pa.t3, pa.t4]
+    pool: train
+    overgeneration: 1.3 # budget estimate: rejects (schema, rules, dedup, leakage) are regenerated
+    coverage_min_per_pair: 3
+  val:
+    n: 450
+    family: A
+    generator_family: openai_gpt_oss
+    prompt_family: P-A
+    prompt_file: pa_persona.v1
+    templates: [pa.t5, pa.t6]
+    pool: val
+    overgeneration: 1.3
+    coverage_min_per_pair: 0
+  test_synth:
+    n: 1045
+    family: B
+    generator_family: mistral
+    prompt_family: P-B
+    prompt_file: pb_scenario.v1
+    templates: [pb.s1+pb.m1, pb.s2+pb.m2]
+    pool: test
+    overgeneration: 1.5
+    coverage_min_per_pair: 1
+
+# §9.3 (W-m8): train = 8 non-critical labels x 248 + 5 critical x 323 (x1.3) + 1 how_to_question;
+# val proportional to train (~31 / ~40); test_synth = 5 critical x 120 + 7 non-critical x 55 + 60.
+intent_allocation:
+  critical_oversample: 1.3
+  train: {critical_each: 323, non_critical_each: 248, other_unclear: 248, extra: {how_to_question: 1}}
+  val: {proportional_to: train}
+  test_synth: {critical_each: 120, non_critical_each: 55, other_unclear: 60, extra: {}}
+
+# Sampled with deficit weighting toward these shares (ERPROT D3), subject to the constraints.
+dimensions:
+  difficulty: {ordinary: 0.40, ambiguous: 0.15, multi_intent: 0.12, severe: 0.10, needs_info: 0.13, adversarial_injection: 0.10}
+  product_area: uniform
+  plan: {free: 0.15, starter: 0.30, business: 0.35, enterprise: 0.20}
+  channel: {web_form: 0.35, email: 0.40, api: 0.05, chat_transcript: 0.20}
+  sentiment: {positive: 0.05, neutral: 0.35, confused: 0.20, frustrated: 0.28, angry: 0.12}
+  style: {terse: 0.20, rambling: 0.20, non_native: 0.20, angry_caps: 0.10, forwarded_thread: 0.10, plain: 0.20}
+  length_bucket: {terse: 0.20, short: 0.40, medium: 0.30, long: 0.10}
+  subject_style: {specific: 0.45, vague: 0.30, blankish: 0.10, misleading_emphasis: 0.15}
+  human_request: {none: 0.92, direct: 0.04, indirect: 0.04}
+
+draw_order: [difficulty, product_area, plan, channel, sentiment, style, length_bucket, subject_style, human_request]
+
+length_words: {terse: [5, 40], short: [40, 120], medium: [120, 300], long: [300, 700]}
+
+# Exact per-intent shares for the binary card flags (allocated with largest remainder).
+flags:
+  lexical_avoid: {critical: 0.30, other: 0.10} # spec: 30% of critical records avoid the obvious keyword
+  pii_placeholders: 0.20 # §9.1.7: masked placeholders injected on purpose
+  legal_threat_inside_billing: 0.05 # of billing intents; mirrors the hard-set stratum
+  greeting_allowed: 0.30 # A1: formulaic greetings are the exception
+  noise: 0.25 # deterministic typo noise after generation (noise_ops[])
+secondary_count: {one: 0.80, two: 0.20}
+secondary_order: {primary_first: 0.50, secondary_first: 0.30, interleaved: 0.20}
+churn_cues:
+  cancellation: {explicit_cancel: 0.70, competitor: 0.30}
+  other: {none: 0.82, vague_alternatives: 0.10, repeated_contact: 0.03, ultimatum: 0.05}
+
+# Rejection rules derived from spec §3 and §5 (A-11). A value that violates a rule is never drawn.
+constraints:
+  - {id: sso_plan, if: {intent: [sso_login_failure]}, require: {plan: [business, enterprise]}}
+  - {id: sso_area, if: {intent: [sso_login_failure]}, require: {product_area: [sso_identity]}}
+  - {id: billing_area, if: {intent: [billing_duplicate_charge, billing_payment_failure, refund_request]}, require: {product_area: [billing_subscriptions]}}
+  - {id: billing_paid_plan, if: {intent: [billing_duplicate_charge, billing_payment_failure, refund_request, cancellation_request]}, require: {plan: [starter, business, enterprise]}} # the free plan is never charged (§3)
+  - {id: cancellation_area, if: {intent: [cancellation_request]}, require: {product_area: [billing_subscriptions]}}
+  - {id: pricing_area, if: {intent: [plan_pricing_inquiry]}, require: {product_area: [billing_subscriptions]}}
+  - {id: access_area, if: {intent: [account_access_issue]}, require: {product_area: [user_admin_permissions, mobile_apps]}}
+  - {id: outage_area, if: {intent: [service_outage]}, require: {product_area: [platform_availability, sso_identity, integrations_api, notifications_email]}}
+  - {id: bug_area, if: {intent: [bug_report]}, require: {product_area: [projects_tasks, boards_timelines, user_admin_permissions, integrations_api, notifications_email, mobile_apps, reporting_analytics, automations, data_import_export, billing_subscriptions]}}
+  - {id: privacy_area, if: {intent: [privacy_legal_request]}, require: {product_area: [data_import_export, user_admin_permissions, billing_subscriptions, platform_availability]}}
+  - {id: severe_intents, if: {difficulty: [severe]}, require: {intent: [sso_login_failure, account_access_issue, billing_duplicate_charge, billing_payment_failure, refund_request, cancellation_request, service_outage, bug_report, security_report, privacy_legal_request]}}
+  - {id: unclear_difficulty, if: {intent: [other_unclear]}, require: {difficulty: [ordinary, ambiguous, needs_info, adversarial_injection]}}
+  - {id: forwarded_email, if: {style: [forwarded_thread]}, require: {channel: [email]}}
+  - {id: forwarded_length, if: {style: [forwarded_thread]}, require: {length_bucket: [short, medium, long]}}
+  - {id: caps_sentiment, if: {style: [angry_caps]}, require: {sentiment: [frustrated, angry]}}
+  - {id: terse_length, if: {style: [terse]}, require: {length_bucket: [terse, short]}}
+  - {id: rambling_length, if: {style: [rambling]}, require: {length_bucket: [medium, long]}}
+  - {id: api_style, if: {channel: [api]}, require: {style: [terse, plain, non_native]}}
+  - {id: multi_length, if: {difficulty: [multi_intent]}, require: {length_bucket: [short, medium, long]}}
+  - {id: injection_length, if: {difficulty: [adversarial_injection]}, require: {length_bucket: [short, medium, long]}} # the injected text alone is ~12 words
+# Card effects applied after the draw (not rejection rules):
+#   needs_info    => information_sufficient = false, required entities omitted
+#   other_unclear => information_sufficient = false
+#   multi_intent  => 1-2 secondary intents (critical-first respected)
+#   chat_transcript => at least 2 earlier messages; repeated_contact => at least 2
+#   features are drawn only from the plan's features, except for plan_pricing_inquiry (§3)
+
+coverage:
+  pairwise: [difficulty, style, channel, plan, sentiment, length_bucket, product_area]
+
+# T-DATA-strata (BR-038): minimum records per difficulty stratum in test_synth.
+strata_min:
+  test_synth: {ordinary: 350, ambiguous: 130, multi_intent: 100, severe: 80, needs_info: 110, adversarial_injection: 80}
+
+history_len: {chat_transcript: [2, 5], email_followup: [1, 2], email_followup_share: 0.20}
+
+descriptions:
+  difficulty:
+    ordinary: a clear, typical request
+    ambiguous: the wording could fit more than one kind of request, but the main need is still identifiable
+    multi_intent: the customer raises separate needs in one message
+    severe: high impact - many people blocked, money or data at risk, or a hard deadline
+    needs_info: the customer leaves out details support would need for a first step
+    adversarial_injection: the message contains injected text that tries to manipulate an automated assistant; the customer's real need stays the same
+  style:
+    terse: very short, clipped sentences, no pleasantries
+    rambling: long-winded, adds background and side remarks before getting to the point
+    non_native: fluent but non-native English with small grammar slips; no caricature
+    angry_caps: angry tone, a few words in CAPITALS, several exclamation marks
+    forwarded_thread: an email that forwards an earlier internal thread (forwarded-message header lines and a colleague's note) before the ask
+    plain: plain, neutral business writing
+  subject_style:
+    specific: a specific subject naming the concrete problem, without category words
+    vague: a vague subject that only says help is needed
+    blankish: an almost empty subject (one or two words, or just punctuation)
+    misleading_emphasis: a subject that emphasizes a side detail rather than the main need
+  channel:
+    web_form: a web support form with a subject line and a message body
+    email: an email that may include a signature
+    api: a ticket created through the Taskmoor API by the customer's own tooling; terse, may include a log line
+    chat_transcript: a live-chat transcript; the earlier turns are the previous messages and the final customer turn is the message
+  human_request:
+    none: does not ask for a person
+    direct: explicitly asks to speak with a person, a manager or a human agent
+    indirect: asks for a person without the words human, person or agent, for example by asking for a phone call or for a colleague to take over
+  churn_cue:
+    none: no sign of leaving
+    vague_alternatives: mentions vaguely that the team is looking at other tools, without deciding anything
+    repeated_contact: says this is not the first time they have contacted support about it
+    explicit_cancel: states clearly that they want to cancel, will not renew, will terminate the contract, or will downgrade to the free plan
+    competitor: says they are moving to the competing product named in the card
+    ultimatum: gives an ultimatum - they will leave unless it is resolved by a deadline
+  impact:
+    urgent: the whole organization is blocked or at risk
+    high: a team or an important workflow is blocked
+    normal: one user is affected or a workaround exists
+    low: nothing is blocked; it is a question or a minor annoyance
+
+intents:
+  sso_login_failure:
+    definition: SAML or OIDC single sign-on fails (redirect loop, assertion or certificate error, identity-provider misconfiguration); not password sign-in
+    need_phrase: also has a single sign-on problem
+    required_entities: [saml_idp, error_code]
+    error_code_prefixes: [SAML_ERR, SCIM_ERR] # SCIM codes only on plans with SCIM (fact sheet)
+    optional_entities: [user_count_affected, browser, timestamp]
+    needs_info_omit: [which identity provider they use, the exact error code or message]
+    secondary_candidates: [account_access_issue, how_to_question, plan_pricing_inquiry, bug_report]
+    banned_words: [SSO, single sign-on]
+    scenario_types:
+      - SAML assertions are rejected after the identity-provider signing certificate was rotated
+      - users are sent back to the sign-in page repeatedly after SSO was enforced for a new email domain
+      - clock drift between the identity provider and Taskmoor causes expired-assertion errors
+      - new hires cannot sign in because they were not assigned to the Taskmoor app in the identity provider
+      - SSO sign-in fails only in the mobile app after an app update
+  account_access_issue:
+    definition: password reset, two-factor authentication, lockout, an invitation that never arrived, or a role or permission that blocks access (password sign-in, not SSO)
+    need_phrase: also cannot get into their account
+    required_entities: [error_code]
+    error_code_prefixes: [AUTH_ERR, PERM_ERR, MOB_ERR_SESSION]
+    optional_entities: [browser, os, app_version, timestamp]
+    needs_info_omit: [what exactly happens when they try to sign in, which account or email is affected]
+    secondary_candidates: [sso_login_failure, how_to_question, bug_report]
+    banned_words: [password, locked out]
+    scenario_types:
+      - the password-reset message never arrives in the user's inbox
+      - a user lost the phone that holds their two-factor codes and is locked out
+      - an invitation link expired before the new member accepted it
+      - a member was changed to guest and can no longer open a project
+      - an account was locked after repeated failed sign-in attempts
+  billing_duplicate_charge:
+    definition: the customer was charged two or more times for the same period or invoice
+    need_phrase: also noticed they were billed more than once
+    required_entities: [invoice_id, charge_amount]
+    optional_entities: [charge_date, currency]
+    needs_info_omit: [which invoice or charge is affected, the amount or date of the charges]
+    secondary_candidates: [refund_request, plan_pricing_inquiry, how_to_question, cancellation_request, billing_payment_failure]
+    banned_words: [twice, duplicate, double]
+    scenario_types:
+      - the same monthly invoice was paid twice by card
+      - a seat upgrade was billed both as a prorated amount and in full
+      - the annual renewal was charged on two consecutive days
+      - a failed payment was retried and both attempts went through
+  billing_payment_failure:
+    definition: a card or invoice payment fails, or the account risks suspension for non-payment
+    need_phrase: also has a payment that keeps failing
+    required_entities: [error_code, invoice_id]
+    error_code_prefixes: [PAY_ERR]
+    optional_entities: [charge_amount, charge_date]
+    needs_info_omit: [which invoice or payment failed, the error shown when paying]
+    secondary_candidates: [plan_pricing_inquiry, how_to_question, billing_duplicate_charge, cancellation_request, account_access_issue]
+    banned_words: [declined, payment failed]
+    scenario_types:
+      - the company card was declined at renewal and a suspension notice followed
+      - a bank-transfer payment was not matched to the invoice
+      - a card security check keeps failing so the card is never charged
+      - the card on file expired and the grace period is ending
+  refund_request:
+    definition: the customer asks for money back for a reason other than a duplicate charge
+    need_phrase: also wants some money back
+    required_entities: [invoice_id]
+    optional_entities: [charge_amount, charge_date]
+    needs_info_omit: [which invoice or charge they want refunded, the reason or amount]
+    secondary_candidates: [plan_pricing_inquiry, how_to_question, bug_report, privacy_legal_request]
+    banned_words: [refund]
+    scenario_types:
+      - a plan was purchased at the wrong tier by mistake
+      - an annual plan was bought but the team changed process two weeks later
+      - seats were added for a project that was then called off
+      - the account was charged after a downgrade had been requested
+  cancellation_request:
+    definition: the customer intends to cancel, not renew, downgrade to the free plan, or move to another tool
+    need_phrase: also intends to stop using Taskmoor
+    required_entities: [workspace_id]
+    optional_entities: [competitor_name, charge_date]
+    needs_info_omit: [which workspace or account should be closed]
+    secondary_candidates: [refund_request, privacy_legal_request, bug_report, plan_pricing_inquiry, how_to_question]
+    banned_words: [cancel, cancellation, cancelling, canceling]
+    scenario_types:
+      - the company is being acquired and consolidating its tools
+      - budget cuts mean the subscription will not be renewed
+      - the team is moving to a competing tool
+      - the project has finished and the team wants the free plan only
+      - repeated reliability problems led the customer to end the contract
+  plan_pricing_inquiry:
+    definition: questions about plans, prices, seats, or how upgrades and downgrades work
+    need_phrase: also has a question about plans, prices or seats
+    required_entities: [feature_name]
+    optional_entities: [user_count_affected]
+    needs_info_omit: [how many seats they need, which plan or feature they are asking about]
+    secondary_candidates: [how_to_question, refund_request, account_access_issue]
+    banned_words: [price, pricing]
+    scenario_types:
+      - comparing the cost of the Business and Enterprise plans for a growing team
+      - asking how seat changes are billed in the middle of a billing cycle
+      - asking whether a nonprofit or education discount exists
+      - asking what happens to existing data after a downgrade
+      - asking whether a specific feature is included in their plan
+  service_outage:
+    definition: Taskmoor is unavailable or severely degraded for many users (server errors, pages not loading, region-wide problems)
+    need_phrase: also cannot use Taskmoor at all right now
+    required_entities: [region, http_status]
+    error_code_prefixes: [PLAT_ERR]
+    optional_entities: [timestamp, user_count_affected, error_code]
+    needs_info_omit: [which region or office is affected, what error they see]
+    secondary_candidates: [bug_report, sso_login_failure, how_to_question, refund_request]
+    banned_words: [outage, down]
+    scenario_types:
+      - pages fail to load for everyone in one region since the morning
+      - the API returns server errors for every request
+      - notifications stopped going out for all users
+      - the sign-in page times out for the whole company
+      - boards keep spinning without loading after a platform update
+  bug_report:
+    definition: a defect in one feature, integration or API with limited blast radius
+    need_phrase: also found something that looks broken
+    required_entities: [feature_name]
+    optional_entities: [error_code, app_version, browser, os, steps_already_tried]
+    needs_info_omit: [which feature or screen is affected, what they did before it went wrong]
+    secondary_candidates: [how_to_question, account_access_issue, plan_pricing_inquiry]
+    banned_words: [bug]
+    scenario_types:
+      - the timeline export leaves out tasks that have dependencies
+      - webhook deliveries fail for one customer endpoint
+      - a recurring task is created twice on month-end dates
+      - the CSV import misreads day-first dates
+      - report totals differ from the totals shown on the board
+      - the mobile app closes when an attachment is opened
+      - an automation rule fires twice for the same event
+  how_to_question:
+    definition: a usage or configuration question that the documentation can answer
+    need_phrase: also wants to know how to do something in Taskmoor
+    required_entities: [feature_name]
+    optional_entities: [integration_name]
+    needs_info_omit: [what they are trying to achieve or which feature they mean]
+    secondary_candidates: [plan_pricing_inquiry, bug_report, account_access_issue]
+    banned_words: [how do I, how to]
+    scenario_types:
+      - grouping a board by assignee
+      - sharing a timeline with an external client in read-only mode
+      - building an automation that assigns tasks when the status changes
+      - exporting a report to a spreadsheet every week
+      - connecting a chat integration to a single channel
+      - restricting who can create new projects
+  security_report:
+    definition: suspected unauthorized access, a vulnerability, phishing, or leaked credentials
+    need_phrase: also has a security worry
+    required_entities: [feature_name]
+    optional_entities: [api_endpoint, timestamp, region]
+    needs_info_omit: [where they saw the problem, what exactly was exposed]
+    secondary_candidates: [account_access_issue, privacy_legal_request, bug_report, sso_login_failure]
+    banned_words: [security, hacked, breach, vulnerability]
+    scenario_types:
+      - a member can open boards of a workspace they were never invited to
+      - an API token was accidentally pushed to a public code repository
+      - an email imitating Taskmoor billing asked staff to confirm their card
+      - an admin account shows a sign-in from an unfamiliar country
+      - changing a task number in a shared link opens a task from an unrelated workspace
+  privacy_legal_request:
+    definition: a data-subject request (access, deletion, export) under GDPR or CCPA, a data processing agreement request, a subpoena, or a legal threat
+    need_phrase: also has a request about personal data or legal terms
+    required_entities: [legal_reference]
+    optional_entities: [workspace_id, account_id]
+    needs_info_omit: [whose data the request is about, which law or agreement it relies on]
+    secondary_candidates: [how_to_question, refund_request, account_access_issue]
+    banned_words: [GDPR, lawyer]
+    scenario_types:
+      - a former employee asks for their personal data to be erased
+      - a customer asks for a copy of the personal data held about them
+      - the legal department asks for a signed data processing agreement
+      - a law firm sends a records request
+      - the customer threatens legal action over how their data was handled
+  other_unclear:
+    definition: out of scope, spam, or too little information to tell what the customer needs
+    need_phrase: ""
+    required_entities: []
+    optional_entities: []
+    needs_info_omit: [what they actually need]
+    secondary_candidates: []
+    banned_words: []
+    scenario_types:
+      - a message with no clear request
+      - a sales pitch unrelated to Taskmoor support
+      - a message meant for a different company
+      - a one-line plea for help with nothing else
+
+entity_values:
+  browser: [Chrome 131, Firefox 132, Safari 18, Edge 131]
+  os: [Windows 11, macOS 15, iOS 18, Android 15, Ubuntu 24.04]
+  legal_reference: [GDPR Art. 15, GDPR Art. 17, GDPR Art. 20, GDPR Art. 28, CCPA]
+  steps_already_tried: [cleared the browser cache, signed out and back in, reinstalled the app, tried a different browser, asked a colleague to try]
+  user_count_affected: [3, 12, 25, 40, 80, 150, 300]
+  timestamp_hours: [7, 8, 9, 10, 11, 13, 14, 15, 16, 17]
+  received_window: ["2026-06-01", "2026-09-20"]

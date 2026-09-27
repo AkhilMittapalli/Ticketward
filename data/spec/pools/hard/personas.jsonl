@@ -1,0 +1,80 @@
+{"first_name": "Eamon", "habits": ["asks several questions in a row", "uses abbreviations like FYI and ASAP"], "last_name": "Larkworth", "persona_id": "p_hd_0000", "role": "accountant"}
+{"first_name": "Chiara", "habits": ["uses abbreviations like FYI and ASAP", "writes short bullet points"], "last_name": "Branndene", "persona_id": "p_hd_0001", "role": "procurement specialist"}
+{"first_name": "Uchenna", "habits": ["is blunt and to the point", "types mostly in lowercase"], "last_name": "Marldene", "persona_id": "p_hd_0002", "role": "product designer"}
+{"first_name": "Meera", "habits": ["writes short bullet points", "is blunt and to the point"], "last_name": "Orrdene", "persona_id": "p_hd_0003", "role": "support lead"}
+{"first_name": "Santiago", "habits": ["uses exclamation marks", "uses British spelling"], "last_name": "Hollinyard", "persona_id": "p_hd_0004", "role": "marketing coordinator"}
+{"first_name": "Laila", "habits": ["writes short bullet points", "is polite and formal"], "last_name": "Quarrworth", "persona_id": "p_hd_0005", "role": "accountant"}
+{"first_name": "Naveen", "habits": ["uses British spelling", "mentions their manager"], "last_name": "Dellwick", "persona_id": "p_hd_0006", "role": "team lead"}
+{"first_name": "Zeynep", "habits": ["types mostly in lowercase", "mentions deadlines"], "last_name": "Uppwick", "persona_id": "p_hd_0007", "role": "operations manager"}
+{"first_name": "Tobias", "habits": ["pastes error text verbatim", "uses British spelling"], "last_name": "Wrencombe", "persona_id": "p_hd_0008", "role": "IT administrator"}
+{"first_name": "Beatriz", "habits": ["pastes error text verbatim", "numbers their points"], "last_name": "Rookworth", "persona_id": "p_hd_0009", "role": "engineering manager"}
+{"first_name": "Hiroshi", "habits": ["uses British spelling", "asks several questions in a row"], "last_name": "Yellgarde", "persona_id": "p_hd_0010", "role": "support lead"}
+{"first_name": "Dalia", "habits": ["mentions their manager", "is polite and formal"], "last_name": "Marlthwaite", "persona_id": "p_hd_0011", "role": "data protection officer"}
+{"first_name": "Salma", "habits": ["apologizes before asking", "is blunt and to the point"], "last_name": "Yellacre", "persona_id": "p_hd_0012", "role": "CTO"}
+{"first_name": "Aarav", "habits": ["asks several questions in a row", "mentions their manager"], "last_name": "Iverwick", "persona_id": "p_hd_0013", "role": "engineering manager"}
+{"first_name": "Ebele", "habits": ["uses British spelling", "writes short bullet points"], "last_name": "Carrowshaw", "persona_id": "p_hd_0014", "role": "accountant"}
+{"first_name": "Cosimo", "habits": ["adds background about the team", "types mostly in lowercase"], "last_name": "Quarrdene", "persona_id": "p_hd_0015", "role": "security engineer"}
+{"first_name": "Fergus", "habits": ["signs off with a first name only", "mentions their manager"], "last_name": "Garthstone", "persona_id": "p_hd_0016", "role": "team lead"}
+{"first_name": "Florin", "habits": ["adds background about the team", "is blunt and to the point"], "last_name": "Dellhaven", "persona_id": "p_hd_0017", "role": "project manager"}
+{"first_name": "Nadia", "habits": ["mentions their manager", "uses British spelling"], "last_name": "Carrowhaven", "persona_id": "p_hd_0018", "role": "accountant"}
+{"first_name": "Zainab", "habits": ["apologizes before asking", "writes long sentences with few commas"], "last_name": "Iveracre", "persona_id": "p_hd_0019", "role": "product designer"}
+{"first_name": "Siobhan", "habits": ["is blunt and to the point", "is polite and formal"], "last_name": "Carrowbridge", "persona_id": "p_hd_0020", "role": "team lead"}
+{"first_name": "Amara", "habits": ["pastes error text verbatim", "writes short bullet points"], "last_name": "Vailgarde", "persona_id": "p_hd_0021", "role": "support lead"}
+{"first_name": "Tobias", "habits": ["signs off with a first name only", "uses abbreviations like FYI and ASAP"], "last_name": "Sabledene", "persona_id": "p_hd_0022", "role": "IT administrator"}
+{"first_name": "Nkechi", "habits": ["signs off with a first name only", "uses abbreviations like FYI and ASAP"], "last_name": "Quarrhaven", "persona_id": "p_hd_0023", "role": "engineering manager"}
+{"first_name": "Chidi", "habits": ["numbers their points", "writes long sentences with few commas"], "last_name": "Elmworth", "persona_id": "p_hd_0024", "role": "office manager"}
+{"first_name": "Adriana", "habits": ["asks several questions in a row", "mentions deadlines"], "last_name": "Nettlemoss", "persona_id": "p_hd_0025", "role": "data protection officer"}
+{"first_name": "Kofi", "habits": ["uses exclamation marks", "adds background about the team"], "last_name": "Sablefold", "persona_id": "p_hd_0026", "role": "team lead"}
+{"first_name": "Chiara", "habits": ["uses exclamation marks", "mentions deadlines"], "last_name": "Yellyard", "persona_id": "p_hd_0027", "role": "support lead"}
+{"first_name": "Meera", "habits": ["signs off with a first name only", "uses British spelling"], "last_name": "Zelleracre", "persona_id": "p_hd_0028", "role": "support lead"}
+{"first_name": "Adaeze", "habits": ["uses British spelling", "apologizes before asking"], "last_name": "Quarrdene", "persona_id": "p_hd_0029", "role": "procurement specialist"}
+{"first_name": "Eamon", "habits": ["is blunt and to the point", "mentions their manager"], "last_name": "Marlacre", "persona_id": "p_hd_0030", "role": "finance lead"}
+{"first_name": "Callum", "habits": ["uses exclamation marks", "signs off with a first name only"], "last_name": "Iverhaven", "persona_id": "p_hd_0031", "role": "legal counsel"}
+{"first_name": "Laila", "habits": ["apologizes before asking", "uses abbreviations like FYI and ASAP"], "last_name": "Iverlock", "persona_id": "p_hd_0032", "role": "data protection officer"}
+{"first_name": "Deepa", "habits": ["adds background about the team", "numbers their points"], "last_name": "Nettlethwaite", "persona_id": "p_hd_0033", "role": "engineering manager"}
+{"first_name": "Callum", "habits": ["apologizes before asking", "adds background about the team"], "last_name": "Carrowshaw", "persona_id": "p_hd_0034", "role": "CTO"}
+{"first_name": "Thandiwe", "habits": ["writes long sentences with few commas", "asks several questions in a row"], "last_name": "Sablevale", "persona_id": "p_hd_0035", "role": "office manager"}
+{"first_name": "Adriana", "habits": ["signs off with a first name only", "uses British spelling"], "last_name": "Carrowworth", "persona_id": "p_hd_0036", "role": "product designer"}
+{"first_name": "Uchenna", "habits": ["mentions their manager", "uses exclamation marks"], "last_name": "Dellacre", "persona_id": "p_hd_0037", "role": "operations manager"}
+{"first_name": "Quentin", "habits": ["signs off with a first name only", "types mostly in lowercase"], "last_name": "Hollinvale", "persona_id": "p_hd_0038", "role": "security engineer"}
+{"first_name": "Lucia", "habits": ["uses exclamation marks", "is blunt and to the point"], "last_name": "Upplock", "persona_id": "p_hd_0039", "role": "project manager"}
+{"first_name": "Bogdan", "habits": ["writes short bullet points", "uses exclamation marks"], "last_name": "Hollinridge", "persona_id": "p_hd_0040", "role": "freelance consultant"}
+{"first_name": "Aarav", "habits": ["uses British spelling", "writes short bullet points"], "last_name": "Marlacre", "persona_id": "p_hd_0041", "role": "accountant"}
+{"first_name": "Jelena", "habits": ["asks several questions in a row", "uses exclamation marks"], "last_name": "Larkstone", "persona_id": "p_hd_0042", "role": "HR generalist"}
+{"first_name": "Joaquim", "habits": ["uses British spelling", "uses abbreviations like FYI and ASAP"], "last_name": "Quarrmere", "persona_id": "p_hd_0043", "role": "legal counsel"}
+{"first_name": "Callum", "habits": ["types mostly in lowercase", "writes long sentences with few commas"], "last_name": "Zellermoss", "persona_id": "p_hd_0044", "role": "office manager"}
+{"first_name": "Elif", "habits": ["adds background about the team", "numbers their points"], "last_name": "Iverstone", "persona_id": "p_hd_0045", "role": "product designer"}
+{"first_name": "Emeka", "habits": ["signs off with a first name only", "is blunt and to the point"], "last_name": "Carrowmere", "persona_id": "p_hd_0046", "role": "freelance consultant"}
+{"first_name": "Kamala", "habits": ["writes long sentences with few commas", "mentions deadlines"], "last_name": "Thornmere", "persona_id": "p_hd_0047", "role": "operations manager"}
+{"first_name": "Fatima", "habits": ["asks several questions in a row", "is polite and formal"], "last_name": "Orracre", "persona_id": "p_hd_0048", "role": "finance lead"}
+{"first_name": "Bogdan", "habits": ["asks several questions in a row", "uses exclamation marks"], "last_name": "Brannworth", "persona_id": "p_hd_0049", "role": "accountant"}
+{"first_name": "Fatima", "habits": ["pastes error text verbatim", "numbers their points"], "last_name": "Farncombe", "persona_id": "p_hd_0050", "role": "IT administrator"}
+{"first_name": "Thandiwe", "habits": ["is blunt and to the point", "asks several questions in a row"], "last_name": "Rookmoss", "persona_id": "p_hd_0051", "role": "IT administrator"}
+{"first_name": "Radhika", "habits": ["apologizes before asking", "mentions deadlines"], "last_name": "Vailthwaite", "persona_id": "p_hd_0052", "role": "workspace owner"}
+{"first_name": "Sakura", "habits": ["uses British spelling", "numbers their points"], "last_name": "Orrthwaite", "persona_id": "p_hd_0053", "role": "procurement specialist"}
+{"first_name": "Rosalind", "habits": ["is blunt and to the point", "pastes error text verbatim"], "last_name": "Uppbridge", "persona_id": "p_hd_0054", "role": "data protection officer"}
+{"first_name": "Aarav", "habits": ["pastes error text verbatim", "is polite and formal"], "last_name": "Thornridge", "persona_id": "p_hd_0055", "role": "workspace owner"}
+{"first_name": "Joaquim", "habits": ["uses exclamation marks", "numbers their points"], "last_name": "Quarrlock", "persona_id": "p_hd_0056", "role": "legal counsel"}
+{"first_name": "Thandiwe", "habits": ["mentions deadlines", "adds background about the team"], "last_name": "Branncombe", "persona_id": "p_hd_0057", "role": "finance lead"}
+{"first_name": "Fatima", "habits": ["is polite and formal", "mentions their manager"], "last_name": "Yellcombe", "persona_id": "p_hd_0058", "role": "office manager"}
+{"first_name": "Sigrid", "habits": ["signs off with a first name only", "numbers their points"], "last_name": "Ivercombe", "persona_id": "p_hd_0059", "role": "finance lead"}
+{"first_name": "Beatriz", "habits": ["asks several questions in a row", "numbers their points"], "last_name": "Farnhaven", "persona_id": "p_hd_0060", "role": "office manager"}
+{"first_name": "Deepa", "habits": ["mentions their manager", "writes long sentences with few commas"], "last_name": "Thornlock", "persona_id": "p_hd_0061", "role": "accountant"}
+{"first_name": "Pradeep", "habits": ["uses exclamation marks", "uses abbreviations like FYI and ASAP"], "last_name": "Thornfold", "persona_id": "p_hd_0062", "role": "freelance consultant"}
+{"first_name": "Naveen", "habits": ["adds background about the team", "numbers their points"], "last_name": "Vaildene", "persona_id": "p_hd_0063", "role": "freelance consultant"}
+{"first_name": "Tamsin", "habits": ["adds background about the team", "writes short bullet points"], "last_name": "Garthshaw", "persona_id": "p_hd_0064", "role": "support lead"}
+{"first_name": "Jahid", "habits": ["mentions their manager", "numbers their points"], "last_name": "Kestlock", "persona_id": "p_hd_0065", "role": "operations manager"}
+{"first_name": "Hiroshi", "habits": ["adds background about the team", "writes long sentences with few commas"], "last_name": "Ashridge", "persona_id": "p_hd_0066", "role": "accountant"}
+{"first_name": "Fergus", "habits": ["writes short bullet points", "types mostly in lowercase"], "last_name": "Dellridge", "persona_id": "p_hd_0067", "role": "agency owner"}
+{"first_name": "Tamsin", "habits": ["uses abbreviations like FYI and ASAP", "types mostly in lowercase"], "last_name": "Ashworth", "persona_id": "p_hd_0068", "role": "accountant"}
+{"first_name": "Mateus", "habits": ["pastes error text verbatim", "asks several questions in a row"], "last_name": "Nettleridge", "persona_id": "p_hd_0069", "role": "operations manager"}
+{"first_name": "Kamala", "habits": ["apologizes before asking", "is polite and formal"], "last_name": "Rookfold", "persona_id": "p_hd_0070", "role": "engineering manager"}
+{"first_name": "Olamide", "habits": ["uses abbreviations like FYI and ASAP", "uses exclamation marks"], "last_name": "Orrmoss", "persona_id": "p_hd_0071", "role": "legal counsel"}
+{"first_name": "Zainab", "habits": ["uses British spelling", "asks several questions in a row"], "last_name": "Zelleryard", "persona_id": "p_hd_0072", "role": "team lead"}
+{"first_name": "Amara", "habits": ["signs off with a first name only", "mentions deadlines"], "last_name": "Elmgarde", "persona_id": "p_hd_0073", "role": "agency owner"}
+{"first_name": "Nikolai", "habits": ["writes long sentences with few commas", "mentions their manager"], "last_name": "Thornmere", "persona_id": "p_hd_0074", "role": "support lead"}
+{"first_name": "Hiroshi", "habits": ["is polite and formal", "adds background about the team"], "last_name": "Thornmoss", "persona_id": "p_hd_0075", "role": "product designer"}
+{"first_name": "Deepa", "habits": ["uses exclamation marks", "mentions their manager"], "last_name": "Dellbridge", "persona_id": "p_hd_0076", "role": "office manager"}
+{"first_name": "Kaito", "habits": ["types mostly in lowercase", "writes long sentences with few commas"], "last_name": "Brannthwaite", "persona_id": "p_hd_0077", "role": "project manager"}
+{"first_name": "Joaquim", "habits": ["uses exclamation marks", "apologizes before asking"], "last_name": "Carrowdene", "persona_id": "p_hd_0078", "role": "project manager"}
+{"first_name": "Laila", "habits": ["mentions deadlines", "writes short bullet points"], "last_name": "Uppthwaite", "persona_id": "p_hd_0079", "role": "CTO"}

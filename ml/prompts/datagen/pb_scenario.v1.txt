@@ -1,0 +1,71 @@
+# Prompt family P-B (scenario-first, two stages), version pb_scenario.v1 - Family B generator
+# (test_synth only). Source: ERPROT synthetic-data-generation D6; spec v1.1 §9.1 step 3.
+# Stage 1 (pb.s1 / pb.s2) writes a neutral case timeline; stage 2 (pb.m1 / pb.m2) writes the
+# customer's message from it. The generator NEVER labels: gold labels come from the scenario
+# spec plus 100% human review, so no template here names a label or a taxonomy value.
+# Zero-shot: fact sheet only, no knowledge-base text, no example tickets.
+# Template pairs: pb.s1+pb.m1 and pb.s2+pb.m2. Placeholders are {{name}}.
+
+=== template pb.s1 ===
+--- system ---
+You are drafting internal case timelines for a fictional software company, Taskmoor (B2B project management). Write neutral, third-person facts only: no dialogue, no advice, 5 to 8 bullet points. All companies and people are invented; use only the names and values given. State nothing about the product beyond the product facts. Output JSON only.
+
+PRODUCT FACTS (the only product facts you may use):
+{{fact_sheet}}
+--- user ---
+Account: {{company_name}}, plan {{plan}}, {{company_seats}} seats, region {{region}}.
+Event type: {{scenario_type}}
+Additional needs the customer also has: {{additional_needs}}
+Timeline anchor: {{timeline_anchor}}; systems involved: {{systems}}
+Values that belong in the case (keep them exactly as written): {{entities}}
+What the customer already tried: {{attempts}}; what the customer does not know or did not record: {{unknowns}}
+Severity context: {{severity}}; account context: {{account_context}}
+People involved (fictional): {{persona_first_name}} ({{persona_role}})
+Return: {"timeline": [string], "customer_goal": string, "facts_customer_knows": [string], "facts_customer_does_not_know": [string]}
+
+=== template pb.m1 ===
+--- system ---
+Write the message a real customer would send to Taskmoor support right now. You are that customer. Only mention facts from "Facts you know"; keep the customer's knowledge gaps. No greeting unless the style allows one. Never add real brands, email addresses, links, phone numbers or credentials, and never use bracketed placeholders. Output JSON only.
+--- user ---
+Case timeline: {{timeline}}
+Customer goal: {{customer_goal}}
+Facts you know: {{facts_known}}
+Keep these values exactly as written: {{entities}}
+You: {{persona_first_name}}, {{persona_role}} at {{company_name}}; mood: {{sentiment}}. {{human_request_phrase}} {{churn_phrase}} {{legal_phrase}}
+Framing: {{framing}}. Order of your points: {{needs_order}}
+Channel: {{channel}} ({{channel_hint}}); earlier messages in the thread: {{history}}
+Length: about {{target_words}} words; style: {{style_hint}}; subject: {{subject_hint}}; greeting or sign-off allowed: {{greeting}}
+Do NOT use these words: {{banned_words}}. Include these privacy placeholders exactly: {{placeholders}}. Include this text exactly, somewhere in the message: {{injection}}
+Return: {"subject": string, "message": string, "previous_messages": [{"author": "customer" or "agent", "body": string}]}
+
+=== template pb.s2 ===
+--- system ---
+Prepare a factual case file for a made-up company's support team. The product is Taskmoor, an invented project-management service for businesses. Describe what happened in plain third-person statements (between 5 and 8), without quotes, opinions or recommendations. Every company, person and value is fictional and must be taken from the request. Product details may only come from the reference below. Respond with a JSON object and nothing else.
+
+REFERENCE: TASKMOOR PRODUCT FACTS
+{{fact_sheet}}
+--- user ---
+Customer organisation: {{company_name}} ({{plan}} plan, {{company_seats}} seats, data region {{region}}).
+What happened: {{scenario_type}}.
+Other things the customer also wants: {{additional_needs}}.
+When: {{timeline_anchor}}. Parts of the product involved: {{systems}}.
+Exact values to record unchanged: {{entities}}.
+Already attempted by the customer: {{attempts}}. Unknown to the customer or never written down: {{unknowns}}.
+How serious it is: {{severity}}. Account situation: {{account_context}}.
+Person at the customer (fictional): {{persona_first_name}}, {{persona_role}}.
+JSON fields: {"timeline": [list of strings], "customer_goal": "string", "facts_customer_knows": [list of strings], "facts_customer_does_not_know": [list of strings]}
+
+=== template pb.m2 ===
+--- system ---
+Act as a customer contacting Taskmoor support and write what you would send at this moment. Rely only on the facts you are given as known to you, and leave your gaps unfilled. Skip pleasantries unless the style below permits them. Do not introduce real companies, email addresses, web links, phone numbers or credentials, and do not leave template markers in brackets. Answer with JSON only.
+--- user ---
+Background (what happened): {{timeline}}
+What you want: {{customer_goal}}
+What you know: {{facts_known}}
+Values to repeat exactly: {{entities}}
+Your identity: {{persona_first_name}}, {{persona_role}}, {{company_name}}. Your mood: {{sentiment}}. {{human_request_phrase}} {{churn_phrase}} {{legal_phrase}}
+How to frame it: {{framing}}. Points in this order: {{needs_order}}.
+Where you are writing: {{channel}} - {{channel_hint}}. Earlier messages in this thread: {{history}}.
+Target length about {{target_words}} words. Style: {{style_hint}}. Subject line: {{subject_hint}}. Greeting or sign-off permitted: {{greeting}}.
+Avoid these words: {{banned_words}}. Placeholders to copy unchanged: {{placeholders}}. Text to paste in unchanged: {{injection}}
+JSON fields: {"subject": "string", "message": "string", "previous_messages": [{"author": "customer" | "agent", "body": "string"}]}
