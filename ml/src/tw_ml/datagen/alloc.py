@@ -35,7 +35,7 @@ def rng_for(*parts: object) -> random.Random:
     Returns:
         An independent, deterministic generator (not for cryptographic use).
     """
-    return random.Random(derive_seed(*parts))  # noqa: S311 - reproducible sampling, not crypto
+    return random.Random(derive_seed(*parts))  # noqa: S311 - reproducible sampling  # nosec B311
 
 
 def largest_remainder(weights: Mapping[str, float], total: int) -> dict[str, int]:

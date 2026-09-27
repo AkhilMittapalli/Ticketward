@@ -525,7 +525,7 @@ class OpenAICompatibleProvider:
         timeout = httpx.Timeout(settings.http.timeout_s, connect=settings.http.connect_timeout_s)
         self._client = client or httpx.Client(timeout=timeout, follow_redirects=False)
         self._sleep = sleep
-        self._rng = rng or random.Random()  # noqa: S311 - jitter only
+        self._rng = rng or random.Random()  # noqa: S311 - retry jitter only  # nosec B311
 
     @property
     def host(self) -> str:
