@@ -86,6 +86,8 @@ class LabelRules:
         repeated_contact_cues: Compiled repeated-contact patterns.
         human_direct: Compiled direct human-request patterns.
         human_indirect: Compiled indirect human-request patterns.
+        high_cue_exclusions: A high cue whose matched phrase contains one of these (newsletters,
+            e-mails, notifications) is not a churn signal (spec errata 6, D6-10).
     """
 
     version: str
@@ -106,6 +108,7 @@ class LabelRules:
     repeated_contact_cues: tuple[re.Pattern[str], ...]
     human_direct: tuple[re.Pattern[str], ...]
     human_indirect: tuple[re.Pattern[str], ...]
+    high_cue_exclusions: tuple[re.Pattern[str], ...] = ()
 
     # ------------------------------------------------------------------ routing
     def allowed_queues(self, intent: str) -> tuple[str, ...]:
@@ -222,8 +225,10 @@ class LabelRules:
         Returns:
             True when a high-churn cue is present.
         """
-        if any(p.search(text) for p in self.high_cues):
-            return True
+        for pattern in self.high_cues:
+            for match in pattern.finditer(text):
+                if not any(x.search(match.group(0)) for x in self.high_cue_exclusions):
+                    return True
         return any(self._competitor_move(text, name) for name in competitors if name)
 
     def has_medium_cue(self, text: str) -> bool:
@@ -318,6 +323,7 @@ def load_label_rules(path: Path | None = None, taxonomy: Taxonomy | None = None)
         repeated_contact_cues=_compile(churn.get("repeated_contact_cues", [])),
         human_direct=_compile(human.get("direct", [])),
         human_indirect=_compile(human.get("indirect", [])),
+        high_cue_exclusions=_compile(churn.get("high_cue_exclusions", [])),
     )
 
 

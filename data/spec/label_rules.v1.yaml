@@ -135,10 +135,14 @@ priority:
 churn:
   negative_sentiments: [frustrated, angry]
   medium_plans: [business, enterprise]
+  # A high cue whose matched phrase mentions one of these is not churn (errata 6, D6-10):
+  # "cancel my newsletter subscription" / "cancel the email notifications for our account".
+  high_cue_exclusions:
+    - '\b(?:newsletters?|mailing[ -]lists?|e-?mails?|notifications?|digests?|marketing|alerts?)\b'
   high_cues: # explicit cancel intent, departure announcement, or ultimatum
     - '\bcancel(?:l?ing|l?ed|lation)?\b[^.!?\n]{0,40}\b(?:subscription|plan|contract|account|renewal|licen[cs]es?|seats?|workspace)\b'
     - '\b(?:subscription|plan|contract|account|workspace)\b[^.!?\n]{0,30}\bcancel'
-    - '\b(?:not|won''t|will not|don''t|do not|aren''t|are not)\s+(?:be\s+)?renew(?:ing)?\b'
+    - '\b(?:not|won''t|will not|don''t|do not|aren''t|are not)\s+(?:be\s+)?renew(?:ing|ed)?\b'
     - '\bterminat(?:e|ing|ion)\b[^.!?\n]{0,40}\b(?:contract|subscription|agreement|account|plan)\b'
     - '\bdowngrad(?:e|ing)\b[^.!?\n]{0,25}\bfree\b'
     - '\b(?:moving|switching|migrating|going|moved|switched|move|switch)\s+(?:over\s+|all\s+)?to\s+(?:another|a different|a new|a competing|some other)\s+(?:tool|vendor|provider|platform|product|solution|app)\b'
