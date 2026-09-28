@@ -7,9 +7,9 @@
 
 **Created**: 2026-09-26
 **Last Updated**: 2026-09-26
-**Status**: Resolved (research questions answered: dataset ids, revisions, license, sizes, fields, the full intent lists and a complete mapping). The spec change (composition and mapping corrections) is pending an ADR-0016 amendment.
+**Status**: Resolved (research questions answered: dataset ids, revisions, license, sizes, fields, the full intent lists and a complete mapping). The spec change (composition and mapping corrections) is applied: ADR-0016 was amended in spec v1.1 (A-13, 2026-09-27).
 **Category**: ML Data / Evaluation
-**Linked ADR(s)**: ADR-0016 (test set from a different model family + hard set + Bitext OOD), amendment required
+**Linked ADR(s)**: ADR-0016 (test set from a different model family + hard set + Bitext OOD), amended 2026-09-27
 **Spec sections**: §9.1.5, §9.3 (test_ood), §9.8 (per-split reporting), §13 S-12, §20 L-07, §21 R-10, §23
 
 ---
@@ -447,7 +447,7 @@ ood_macro_f1 = f1_score(y_true_strict, y_pred_strict, labels=MAPPED_5, average="
 - [ ] `tw_ml.eval` OOD report block (D7 metrics + caveat text); dashboard panel.
 - [ ] Dataset-card section "OOD set", with license notes (D8).
 - [ ] If publishing the materialized OOD set: a separate HF dataset under CDLA-Sharing-1.0 with NOTICE.
-- [ ] ADR-0016 amendment (SI-1…SI-7).
+- [x] ADR-0016 amendment (SI-1…SI-7), applied in spec v1.1 (A-13).
 
 ---
 
