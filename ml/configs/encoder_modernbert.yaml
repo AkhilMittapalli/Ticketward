@@ -1,0 +1,53 @@
+# E2 encoder baseline: ModernBERT-base multi-head classifier (spec v1.1 §9.5 "Encoder baseline",
+# §9.7 E2; ADR-0018; P2.9). Validated by tw_ml.train.config; 3 seeds like E4 (A-10).
+#
+#   python -m tw_ml.train --config ml/configs/encoder_modernbert.yaml --seed 42 [--dry-run]
+#
+# Output: prediction.v1 JSONL per seed and open split, scored with
+#   python -m tw_ml.eval score --experiment E2 --split val --gold <val> --pred s42=... --pred ...
+# Confidence is calibrated_softmax: one temperature per head, fitted on val (ADR-0017).
+# ERPROT encoder-baseline is still a stub: values below come from §9.5; the two marked
+# "not in §9.5" are library conventions, to be revisited only on val.
+kind: encoder
+version: encoder.v1
+name: e2-modernbert-base
+base:
+  repo: answerdotai/ModernBERT-base
+  revision: <verify> # pin the commit SHA before the E2 runs
+  license: apache-2.0
+  params_b: 0.149 # 149M (model card)
+trust_remote_code: false
+use_safetensors: true
+precision:
+  fp16: true # T4: fp16 AMP over fp32 master weights; never bf16
+  bf16: false
+  attn_implementation: sdpa
+heads: [intent, priority, sentiment, churn_risk, product_area, recommended_queue]
+pooling: cls # not in §9.5: first-token pooling, as the library classification heads do
+head_dropout: 0.0 # not in §9.5: ModernBERT's classifier_dropout default
+train:
+  lr: 3.0e-5
+  per_device_batch: 32
+  epochs: 5
+  max_length: 512 # longer inputs are truncated from the end (oldest history first)
+  warmup_ratio: 0.06
+  weight_decay: 0.01
+  class_weighting: inverse_sqrt # per head, from train frequencies
+  best_metric: intent_macro_f1 # early stopping on val macro-F1: the best epoch is kept
+calibration: temperature # calibrated_softmax: one temperature per head, fitted on val
+seeds: [42, 1337, 2026]
+hub:
+  checkpoint_repo: <hf_user>/tw-e2-modernbert-base-s{seed}
+  private: true
+  strategy: checkpoint
+tracking:
+  experiment: tw-e2-encoder
+  store: file
+  report_to: [mlflow, codecarbon]
+platform:
+  hardware: t4
+  torch: "2.11"
+data:
+  train_file: train/records.jsonl # under --data-dir (default data/generated)
+  val_file: val/records.jsonl
+  predict_splits: [val, hard_dev] # open splits only (P2); sealed splits wait for P10

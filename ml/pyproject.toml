@@ -19,11 +19,28 @@ dependencies = [
     "pyyaml>=6.0",
 ]
 
+[project.optional-dependencies]
+# P2/P3 training on Kaggle/Colab T4 (spec §9.5 pins, P3.7; ERPROT qlora-training-on-t4).
+# torch is NOT listed and never enters the lock: the platform's CUDA torch (2.11) is used and
+# asserted at runtime (A-03). Never installed locally: `uv sync` installs no extras, and the
+# notebooks install the hashed export `requirements/train.txt` instead (docs/training.md).
+train = [
+    "accelerate==1.15.0",
+    "bitsandbytes==0.50.2; sys_platform == 'linux'", # QLoRA (3-4B) only; Linux CUDA wheels
+    "codecarbon>=3.3",                               # CO2 estimate for the model card (P3.24)
+    "datasets>=4.7.0",                               # TRL 1.14 requirement
+    "huggingface-hub<2",                             # transformers 5.17 requires <2.0 (SI-8)
+    "mlflow>=3.16",                                  # file store on the platform (spec §9.6)
+    "peft==0.21.0",
+    "transformers==5.17.0",
+    "trl==1.14.0",
+]
+
 [project.scripts]
 tw-datagen = "tw_ml.datagen.__main__:main"
 
-# PEP 735 dependency groups. `uv sync --locked` installs the default groups below; the
-# planned P2/P3 groups are opt-in (`--group train`, `--group export`).
+# PEP 735 dependency groups. `uv sync --locked` installs the default groups below; `bitext` and
+# the planned P3 `export` group are opt-in (`--group export`). Training is the `train` extra.
 [dependency-groups]
 datagen = [ # P1: synthetic tickets, label QA, leakage checks, Bitext OOD mapping
     "datasketch==2.0.0", # exact pin (ERPROT leakage-and-dedup: 2.0.0 changed the MinHash scheme)
@@ -34,7 +51,8 @@ datagen = [ # P1: synthetic tickets, label QA, leakage checks, Bitext OOD mappin
     "pyyaml>=6.0",
     "scipy>=1.18", # sparse exact Jaccard: the leakage CI truth path (ERPROT D10)
 ]
-eval = [ # P2/P10: statistics and baselines
+eval = [ # P2/P10: statistics and baselines; httpx is the bake-off's Ollama client
+    "httpx>=0.28",
     "numpy>=2.0",
     "scikit-learn>=1.9",
     "scipy>=1.18",
@@ -42,15 +60,6 @@ eval = [ # P2/P10: statistics and baselines
 bitext = [ # P1.23 OOD builder only; downloads happen solely when the owner runs it
     "datasets>=3.0",
     "huggingface-hub>=0.26,<2",
-]
-train = [ # P3 (planned): torch is NOT listed; the platform's CUDA torch is used (A-03)
-    "accelerate>=1.0",
-    "bitsandbytes>=0.44",
-    "datasets>=3.0",
-    "huggingface-hub>=0.26,<2",
-    "peft>=0.13",
-    "transformers>=4.46",
-    "trl>=0.12",
 ]
 export = [ # P3 (planned): adapter merge, GGUF conversion, HF Hub publishing
     "huggingface-hub>=0.26,<2",
@@ -60,6 +69,7 @@ export = [ # P3 (planned): adapter merge, GGUF conversion, HF Hub publishing
 dev = [
     "hypothesis>=6.168",
     "mypy>=2.3",
+    "nbformat>=5.10", # validates the committed training notebooks (tests/test_train_notebooks.py)
     "pytest>=9.1",
     "pytest-cov>=7.1",
     "ruff>=0.16",
@@ -98,6 +108,11 @@ known-first-party = ["tw_ml"]
     "S106",
     "PLR2004", # literal expectations are clearer inline
 ]
+"notebooks/*.ipynb" = [
+    "S101", # asserts are the notebooks' fail-fast platform checks (a failed cell stops the run)
+    "S603", # every subprocess argv is a fixed list: python -m tw_ml.train..., pip, git
+    "S607", # git is the platform's own
+]
 
 # --------------------------------------------------------------------------- mypy
 [tool.mypy]
@@ -113,6 +128,12 @@ pretty = true
 # Untyped third-party packages. datasketch is typed only loosely; the optional
 # sentence-transformers / datasets imports are lazy and never required.
 module = ["datasketch.*", "sklearn.*", "sentence_transformers.*", "datasets.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# The `train` extra runs only on Kaggle/Colab (platform torch, never in this lock): tw_ml.train
+# imports these inside functions, so mypy checks that code without the packages installed.
+module = ["torch.*", "transformers.*", "peft.*", "trl.*", "mlflow.*"]
 ignore_missing_imports = true
 
 [tool.pydantic-mypy]
@@ -134,8 +155,9 @@ branch = true
 source = ["tw_ml"]
 
 [tool.coverage.report]
-# Gate for tw_ml.datagen (P1), tw_ml.eval and tw_ml.baselines (P2); train/export are empty
-# until P2/P3.
+# Gate for tw_ml.datagen (P1), tw_ml.eval and tw_ml.baselines (P2) and tw_ml.train (P2/P3). The
+# torch-only platform functions of tw_ml.train carry `pragma: no cover`; they run on the T4 via
+# `python -m tw_ml.train.smoke`. tw_ml.export is P3.
 fail_under = 85
 show_missing = true
 skip_empty = true

@@ -1056,3 +1056,157 @@ def bakeoff_env(
     for spec in BAKEOFF_CANDIDATES:
         ollama.add_model(f"tw-bakeoff-{spec['id']}")
     return BakeoffEnv(RepoPaths(root), config_path, val_path, gold, ollama)
+
+
+# --------------------------------------------------------------------------- training (tw_ml.train)
+
+TRAIN_SPECIALS: dict[str, int] = {
+    "<|im_start|>": 1,
+    "<|im_end|>": 2,
+    "<|endoftext|>": 3,
+    "<think>": 4,
+    "</think>": 5,
+}
+MERGED_TOKEN = 9_999
+TRAIN_SHA = "b" * 40
+
+
+@dataclass
+class FakeSFTTokenizer:
+    """Qwen3.5-style ChatML (empty think block) with a character-level encoder.
+
+    Special-token literals map to their ids; every other character is ``1000 + ord(c)``.
+    ``merge`` is a string the encoder fuses into one token wherever it occurs, which makes the
+    tokenization unstable across the prompt/completion boundary when it spans that boundary.
+    """
+
+    chat_template: str | None = "{# fake chatml #}"
+    bos_token: str | None = None
+    eos_token: str | None = "<|im_end|>"
+    eos_token_id: int | None = 2
+    pad_token_id: int | None = 3
+    merge: str | None = None
+    all_special_tokens: tuple[str, ...] = tuple(TRAIN_SPECIALS)
+
+    def get_added_vocab(self) -> dict[str, int]:
+        return dict(TRAIN_SPECIALS)
+
+    def apply_chat_template(self, conversation: list[dict[str, str]], **kwargs: object) -> object:
+        text = "".join(f"<|im_start|>{m['role']}\n{m['content']}<|im_end|>\n" for m in conversation)
+        if kwargs.get("add_generation_prompt"):
+            think = (
+                "<think>\n\n</think>\n\n" if kwargs.get("enable_thinking") is False else "<think>\n"
+            )
+            text += "<|im_start|>assistant\n" + think
+        return text
+
+    def encode(self, text: str, *, add_special_tokens: bool = False) -> list[int]:
+        del add_special_tokens
+        ids: list[int] = []
+        index = 0
+        while index < len(text):
+            special = next((s for s in TRAIN_SPECIALS if text.startswith(s, index)), None)
+            if special is not None:
+                ids.append(TRAIN_SPECIALS[special])
+                index += len(special)
+            elif self.merge and text.startswith(self.merge, index):
+                ids.append(MERGED_TOKEN)
+                index += len(self.merge)
+            else:
+                ids.append(1000 + ord(text[index]))
+                index += 1
+        return ids
+
+    def decode(self, ids: list[int], skip_special_tokens: bool = False) -> str:
+        names = {v: k for k, v in TRAIN_SPECIALS.items()}
+        parts = [names.get(i, "") if i in names else chr(i - 1000) for i in ids]
+        return "".join(
+            p for i, p in zip(ids, parts, strict=True) if not (skip_special_tokens and i in names)
+        )
+
+
+@pytest.fixture
+def make_sft_tokenizer() -> Callable[..., FakeSFTTokenizer]:
+    def build(**overrides: Any) -> FakeSFTTokenizer:
+        return FakeSFTTokenizer(**overrides)
+
+    return build
+
+
+@dataclass(frozen=True)
+class TrainSandbox(RepoPaths):
+    """The real repository specs, but manifests and evals/ inside a sandbox."""
+
+    sandbox: Path = Path()
+
+    @property
+    def manifests_dir(self) -> Path:
+        return self.sandbox / "manifests"
+
+    @property
+    def evals_dir(self) -> Path:
+        return self.sandbox / "evals"
+
+    @property
+    def hard_dev_gold_file(self) -> Path:
+        return self.sandbox / "evals" / "hard_dev.v1.jsonl"
+
+
+@pytest.fixture
+def train_paths(tmp_path: Path, paths: RepoPaths) -> TrainSandbox:
+    return TrainSandbox(paths.root, tmp_path / "sandbox")
+
+
+@pytest.fixture
+def make_split_records(
+    make_record: Callable[..., DatasetRecord],
+    make_ticket: Callable[..., TicketPayload],
+    make_labels: Callable[..., TriageLabels],
+) -> Callable[..., list[DatasetRecord]]:
+    """Records of one split, one per BAKEOFF_CASES intent (cycling), with distinct tickets."""
+
+    def build(split: str, count: int, **provenance: Any) -> list[DatasetRecord]:
+        prefix = {"train": "tr", "val": "va", "test_synth": "ts"}[split]
+        records = []
+        for number in range(1, count + 1):
+            intent, queue, action, area = BAKEOFF_CASES[(number - 1) % len(BAKEOFF_CASES)]
+            record_id = f"{prefix}_{number:05d}"
+            labels = make_labels(
+                intent=intent,
+                recommended_queue=queue,
+                recommended_action=action,
+                product_area=area,
+                entities=[],
+                priority="high",
+            )
+            ticket = make_ticket(
+                subject=f"Case {record_id}", message=f"Case {record_id}: {intent}."
+            )
+            values = {"record_id": record_id, "split": split, **provenance}
+            if split == "test_synth":
+                values.setdefault("generator_family", "deepseek")
+                values.setdefault("generator_model", "deepseek-ai/DeepSeek-V3.2")
+                values.setdefault("api_model_id", "deepseek-ai/DeepSeek-V3.2")
+                values.setdefault("prompt_family", "P-B")
+            records.append(make_record(ticket=ticket, labels=labels, **values))
+        return records
+
+    return build
+
+
+@pytest.fixture
+def write_train_data(
+    tmp_path: Path, make_split_records: Callable[..., list[DatasetRecord]]
+) -> Callable[..., Path]:
+    """Write ``train/records.jsonl`` and ``val/records.jsonl`` under a data folder."""
+
+    def write(n_train: int = 6, n_val: int = 4, *, folder: str = "data") -> Path:
+        root = tmp_path / folder
+        for split, count in (("train", n_train), ("val", n_val)):
+            path = root / split / "records.jsonl"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            rows = [r.model_dump_json() for r in make_split_records(split, count)]
+            path.write_text("".join(row + "\n" for row in rows), encoding="utf-8")
+        return root
+
+    return write

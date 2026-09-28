@@ -20,8 +20,8 @@ when the GGUF sets ``tokenizer.ggml.add_bos_token``); :func:`runtime_prompt` the
 template's BOS literal to avoid a double BOS. It is read from the HF tokenizer's
 ``add_bos_token``: verify it against the converted GGUF before a run.
 
-Transformers is imported lazily by :func:`load_tokenizer` only (``uv sync --group train`` or a
-Kaggle/Colab session; it is never part of the default environment). Generate a file with::
+Transformers is imported lazily by :func:`load_tokenizer` only (the ``train`` extra, e.g. on
+Kaggle/Colab; it is never part of the default environment). Generate a file with::
 
     python -m tw_ml.export.prompt_format --model Qwen/Qwen3.5-2B --revision <commit-sha> \
         --out ../ml/configs/prompt_formats/qwen35-2b.json
@@ -453,12 +453,12 @@ def load_tokenizer(model: str, revision: str, *, local_files_only: bool = False)
     try:
         transformers = importlib.import_module("transformers")
     except ImportError:
-        msg = "transformers is not installed (uv sync --group train, or run on Kaggle/Colab)"
+        msg = "transformers is not installed (the train extra; run on Kaggle/Colab)"
         raise PromptFormatError(msg) from None
     tokenizer: ChatTokenizer = transformers.AutoTokenizer.from_pretrained(  # pragma: no cover
         model, revision=revision, trust_remote_code=False, local_files_only=local_files_only
     )
-    return tokenizer  # pragma: no cover - needs transformers (--group train)
+    return tokenizer  # pragma: no cover - needs transformers (the train extra)
 
 
 def build_parser() -> argparse.ArgumentParser:

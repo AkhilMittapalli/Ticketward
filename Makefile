@@ -155,9 +155,20 @@ security: ## bandit + pip-audit locally (gitleaks, Trivy, Semgrep run in CI; see
 	uvx --from "bandit[toml]==1.9.4" bandit -c backend/pyproject.toml -r backend/src scripts ml/src
 	$(UV_BACKEND) export --frozen --no-emit-project --all-extras --format requirements-txt -o "$${TMPDIR:-/tmp}/tw-requirements.txt"
 	uvx pip-audit==2.10.1 --requirement "$${TMPDIR:-/tmp}/tw-requirements.txt" --require-hashes --disable-pip --strict
-	$(UV_ML) export --frozen --no-emit-project --all-extras --format requirements-txt -o "$${TMPDIR:-/tmp}/tw-ml-requirements.txt"
+	$(UV_ML) export --frozen --no-emit-project --all-extras --prune torch --format requirements-txt -o "$${TMPDIR:-/tmp}/tw-ml-requirements.txt"
 	uvx pip-audit==2.10.1 --requirement "$${TMPDIR:-/tmp}/tw-ml-requirements.txt" --require-hashes --disable-pip --strict
 	@command -v gitleaks >/dev/null && gitleaks git --redact --no-banner . || echo "gitleaks not installed; runs in pre-commit and CI"
+
+# ------------------------------------------------------------------ training (runs on Kaggle/Colab T4; docs/training.md)
+CONFIG ?= configs/sft_qwen35_2b.yaml
+SEED ?= 42
+
+.PHONY: ml-requirements train-dry-run
+ml-requirements: ## Re-export ml/requirements/train.txt (hashed notebook install file, no torch) from ml/uv.lock
+	cd ml && uv export --frozen --no-emit-project --extra train --no-default-groups --group eval --format requirements-txt --prune torch --output-file requirements/train.txt > /dev/null
+
+train-dry-run: ## Validate a training config + data locally, no torch: make train-dry-run CONFIG=configs/encoder_modernbert.yaml SEED=42
+	$(UV_ML) run python -m tw_ml.train --config $(CONFIG) --seed $(SEED) --dry-run
 
 # ------------------------------------------------------------------ planned (later phases)
 EVAL := $(UV_ML) run python -m tw_ml.eval
@@ -176,7 +187,8 @@ eval-baselines: ## E1 (+ E2 seeds) on val + hard_dev -> baselines.md (P2; sealed
 	$(EVAL) score --experiment E1 --split val --gold $(VAL_GOLD) --pred ../evals/runs/$(EVAL_DATE)/e1_val.jsonl --date $(EVAL_DATE)
 	$(E1) --input $(HARD_DEV_GOLD) --out ../evals/runs/$(EVAL_DATE)/e1_hard_dev.jsonl
 	$(EVAL) score --experiment E1 --split hard_dev --gold $(HARD_DEV_GOLD) --pred ../evals/runs/$(EVAL_DATE)/e1_hard_dev.jsonl --date $(EVAL_DATE)
-	# E2 (Kaggle): $(EVAL) score --experiment E2 --split val --gold $(VAL_GOLD) --pred s42=.. --pred s1337=.. --pred s2026=.. --deployed-seed <val-best>
+	# E2 (Kaggle): each seed writes <run-root>/e2-modernbert-base-s<seed>/predictions/val.jsonl; copy them back, then:
+	# $(EVAL) score --experiment E2 --split val --gold $(VAL_GOLD) --pred s42=<run>/predictions/val.jsonl --pred s1337=.. --pred s2026=.. --deployed-seed <val-best>
 	$(EVAL) render --title "P2 baselines (val + hard_dev)" --out ../evals/reports/$(EVAL_DATE)/baselines.md $$(for f in ../evals/reports/$(EVAL_DATE)/E[12]_*.json; do printf -- '--report %s ' "$$f"; done)
 
 bakeoff-dry-run: ## E3: check the bake-off config, holdout guard, inputs and prompt formats; calls nothing

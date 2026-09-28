@@ -60,8 +60,10 @@ jobs:
           version: ${{ env.UV_VERSION }}
           working-directory: ${{ matrix.project }}
       - name: Audit the locked dependency set (runtime + dev + all extras)
+        # --prune torch: the ml lock keeps torch only as a hash-less `sys_platform == 'never'`
+        # placeholder (the training platform provides torch), which --require-hashes rejects.
         run: |
-          uv export --frozen --no-emit-project --all-extras --format requirements-txt -o "$RUNNER_TEMP/requirements.txt"
+          uv export --frozen --no-emit-project --all-extras --prune torch --format requirements-txt -o "$RUNNER_TEMP/requirements.txt"
           uvx pip-audit==2.10.1 --requirement "$RUNNER_TEMP/requirements.txt" --require-hashes --disable-pip --strict
 
   bandit:
