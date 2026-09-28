@@ -4,9 +4,12 @@
 # §5.8 (routing), §9.2 and docs/labeling_guidelines.md. Every value is checked against the
 # exported enums in schemas/json/ (ml/tests/test_taxonomy.py fails on drift).
 #
-# alternate_queues / alternate_actions are the ml copy of the §5.8 override allow-list. The spec
-# names one example (sso_login_failure -> incident_response); the rest are conservative choices
-# for label QA and MUST be reconciled with the backend routing allow-list when P1.5 freezes it.
+# alternate_queues / alternate_actions are the ml copy of the §5.8 override allow-lists frozen in
+# P1.5 (backend/src/ticketward/domain/taxonomy.py ROUTING_OVERRIDES; reconciled 2026-09-27). Only
+# spec-derived alternates are listed: sso_login_failure -> incident_response (the §5.8 example)
+# and other_unclear -> no_action_spam (spam is other_unclear, §5.1; guideline R13). Every other
+# intent accepts its §5.8 default only. backend/tests/contract/test_taxonomy_parity.py fails on
+# drift, so change both copies together.
 version: label_rules.v1
 taxonomy_version: "2026-09-v1"
 
@@ -51,12 +54,12 @@ routing: # §5.8 intent -> default queue & action, plus the ml allow-lists (see 
     queue: technical_support_tier_2
     action: request_saml_error_details_and_check_known_incident
     alternate_queues: [incident_response]
-    alternate_actions: [link_to_active_incident, route_to_tier_2]
+    alternate_actions: []
   account_access_issue:
     queue: general_support_tier_1
     action: send_password_reset_guidance
-    alternate_queues: [technical_support_tier_2]
-    alternate_actions: [route_to_tier_2, answer_with_kb_article]
+    alternate_queues: []
+    alternate_actions: []
   billing_duplicate_charge:
     queue: billing_and_accounts
     action: escalate_to_billing_for_review
@@ -80,23 +83,23 @@ routing: # §5.8 intent -> default queue & action, plus the ml allow-lists (see 
   plan_pricing_inquiry:
     queue: general_support_tier_1
     action: share_pricing_page_reference
-    alternate_queues: [billing_and_accounts]
-    alternate_actions: [answer_with_kb_article]
+    alternate_queues: []
+    alternate_actions: []
   service_outage:
     queue: incident_response
     action: check_known_incident_and_share_status
     alternate_queues: []
-    alternate_actions: [link_to_active_incident, escalate_to_engineering]
+    alternate_actions: []
   bug_report:
     queue: technical_support_tier_2
     action: collect_repro_steps_and_escalate_to_engineering
-    alternate_queues: [incident_response]
-    alternate_actions: [escalate_to_engineering, route_to_tier_2]
+    alternate_queues: []
+    alternate_actions: []
   how_to_question:
     queue: general_support_tier_1
     action: answer_with_kb_article
-    alternate_queues: [technical_support_tier_2]
-    alternate_actions: [route_to_tier_2]
+    alternate_queues: []
+    alternate_actions: []
   security_report:
     queue: security_and_privacy
     action: escalate_to_security
@@ -111,7 +114,7 @@ routing: # §5.8 intent -> default queue & action, plus the ml allow-lists (see 
     queue: general_support_tier_1
     action: request_more_information
     alternate_queues: []
-    alternate_actions: [no_action_spam, close_as_duplicate_ticket]
+    alternate_actions: [no_action_spam]
 
 # §5.3 definitions applied BEFORE policy floors (§9.2). base = typical ticket; severe = the
 # matrix "severe" difficulty. plausible = labels outside this set raise an R9 warning.
