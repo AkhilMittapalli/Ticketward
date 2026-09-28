@@ -12,7 +12,8 @@ amended: 2026-09-27 (spec v1.1)
 
 > **Amended in spec v1.1 (2026-09-27; change record A-10, A-11, A-12, A-13, A-27).**
 > * **Generator families** are fixed by ADR-0031: Family A `openai/gpt-oss-120b` (train/val) and Family B
->   `mistralai/Mistral-Large-3-675B-Instruct-2512` (test_synth). Never Claude.
+>   `deepseek-ai/DeepSeek-V3.2` (test_synth; owner decision D-07 of 2026-09-27 replaced Mistral Large 3,
+>   which stays a config-only alternative). Never Claude.
 > * **test_synth = 1,045**, with ≥ 120 per critical class. **test_hard = `hard_dev` 30 + `hard_final` 70**, where
 >   `hard_final` is sealed until P10. **`val_dev`** = a fixed, stratified 50% of val (225), for pipeline development.
 > * **Label QA:**
@@ -122,7 +123,7 @@ paraphrased from test_hard.
 * `T-DATA-strata` (BR-038): quotas met (≥ 120 per critical class in test_synth; hard-set strata).
 * `T-DATA-provenance` (S-12):
   * train/val only `openai_gpt_oss` or `human`;
-  * test_synth only `mistral`;
+  * test_synth only `deepseek` (or `mistral` if the documented alternative is used);
   * test_hard only `human` with `llm_assisted=false`;
   * test_ood only `public_bitext`;
   * no Anthropic family anywhere under `data/`.

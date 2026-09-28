@@ -189,7 +189,7 @@ maintained in the specification.
 - Data: synthetic, public or authorized de-identified only; every record carries
   provenance fields ([data/README.md](data/README.md)). Training and validation data come
   from generator Family A (`openai/gpt-oss-120b`), the synthetic test set from Family B
-  (`mistralai/Mistral-Large-3-675B-Instruct-2512`), and **no Claude/Anthropic outputs are
+  (`deepseek-ai/DeepSeek-V3.2`; ADR-0031), and **no Claude/Anthropic outputs are
   used in any training data**. The Bitext OOD set is referenced only by pointers, under
   CDLA-Sharing-1.0 with attribution (P1).
 - **Taskmoor is fictional and not affiliated with any real company.** It is a B2B
