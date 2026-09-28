@@ -111,6 +111,26 @@ class RepoPaths:
         """Committed evaluation and leakage reports."""
         return self.root / "evals" / "reports"
 
+    @property
+    def evals_dir(self) -> Path:
+        """Evaluation data, reports, the access log and the pre-registration (``evals/``)."""
+        return self.root / "evals"
+
+    @property
+    def analysis_plan_file(self) -> Path:
+        """Pre-registered analysis plan (hashed into every report as ``analysis_plan_sha``)."""
+        return self.evals_dir / "ANALYSIS_PLAN.md"
+
+    @property
+    def sealed_access_log(self) -> Path:
+        """Append-only log of every sealed-split evaluation (``tw_ml.eval.holdout``)."""
+        return self.evals_dir / "sealed_access.jsonl"
+
+    @property
+    def lexicons_dir(self) -> Path:
+        """Policy lexicons (data files shared by the P6 engine and the E1 rules baseline)."""
+        return self.root / "backend" / "policy" / "lexicons"
+
 
 def default_paths() -> RepoPaths:
     """Paths for the repository this package lives in.

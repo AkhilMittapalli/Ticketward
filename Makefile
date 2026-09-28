@@ -158,15 +158,31 @@ security: ## bandit + pip-audit locally (gitleaks, Trivy, Semgrep run in CI; see
 	@command -v gitleaks >/dev/null && gitleaks git --redact --no-banner . || echo "gitleaks not installed; runs in pre-commit and CI"
 
 # ------------------------------------------------------------------ planned (later phases)
-.PHONY: seed eval-baselines eval-bakeoff eval-slm eval-e2e eval-retrieval bench-latency report demo-reset
+EVAL := $(UV_ML) run python -m tw_ml.eval
+E1 := $(UV_ML) run python -m tw_ml.baselines.rules
+EVAL_DATE ?= $(shell date -u +%Y-%m-%d)
+VAL_GOLD ?= ../data/generated/val/records.jsonl
+HARD_DEV_GOLD ?= ../evals/hard_dev.v1.jsonl
+
+.PHONY: seed eval-baselines eval-bakeoff eval-smoke eval-slm eval-e2e eval-retrieval bench-latency report demo-reset
 seed: ## Seed synthetic demo data (planned in P1/P9)
 	@echo "seed: planned in P1 (synthetic KB + accounts) and P9 (demo seed)"
 
-eval-baselines: ## E1 rules + E2 encoder baselines (planned in P2)
-	@echo "eval-baselines: planned in P2"
+eval-baselines: ## E1 (+ E2 seeds) on val + hard_dev -> baselines.md (P2; sealed splits refused)
+	$(E1) --input $(VAL_GOLD) --out ../evals/runs/$(EVAL_DATE)/e1_val.jsonl
+	$(EVAL) score --experiment E1 --split val --gold $(VAL_GOLD) --pred ../evals/runs/$(EVAL_DATE)/e1_val.jsonl --date $(EVAL_DATE)
+	$(E1) --input $(HARD_DEV_GOLD) --out ../evals/runs/$(EVAL_DATE)/e1_hard_dev.jsonl
+	$(EVAL) score --experiment E1 --split hard_dev --gold $(HARD_DEV_GOLD) --pred ../evals/runs/$(EVAL_DATE)/e1_hard_dev.jsonl --date $(EVAL_DATE)
+	# E2 (Kaggle): $(EVAL) score --experiment E2 --split val --gold $(VAL_GOLD) --pred s42=.. --pred s1337=.. --pred s2026=.. --deployed-seed <val-best>
+	$(EVAL) render --title "P2 baselines (val + hard_dev)" --out ../evals/reports/$(EVAL_DATE)/baselines.md $$(for f in ../evals/reports/$(EVAL_DATE)/E[12]_*.json; do printf -- '--report %s ' "$$f"; done)
 
-eval-bakeoff: ## E3 zero-shot bake-off of the candidate base models (planned in P2)
-	@echo "planned in P2: E3 zero-shot bake-off on val + hard_dev"
+eval-bakeoff: ## E3 bake-off: score each candidate's val predictions (from the P2 Ollama driver) -> bakeoff.md
+	for p in ../evals/runs/bakeoff/*_val.jsonl; do $(EVAL) score --experiment E3 --split val --gold $(VAL_GOLD) --pred "$$p" --date $(EVAL_DATE); done
+	$(EVAL) render --title "P2 bake-off (E3, val)" --out ../evals/reports/$(EVAL_DATE)/bakeoff.md $$(for f in ../evals/reports/$(EVAL_DATE)/E3_*.json; do printf -- '--report %s ' "$$f"; done)
+
+eval-smoke: ## Spec 9.10 smoke eval (deterministic, no model; needs evals/smoke from P6); exits 1 on a gate miss
+	$(E1) --input ../evals/smoke/smoke.v1.jsonl --out $${TMPDIR:-/tmp}/tw-e1-smoke.jsonl
+	$(EVAL) score --experiment E1 --split smoke --gold ../evals/smoke/smoke.v1.jsonl --pred $${TMPDIR:-/tmp}/tw-e1-smoke.jsonl --out-dir $${TMPDIR:-/tmp}/tw-eval-smoke --fail-on-gate
 
 eval-slm: ## Model-level eval: make eval-slm MODEL=<registry-id> SPLIT=test_synth (planned in P3)
 	@echo "eval-slm: planned in P3 (MODEL=$(MODEL) SPLIT=$(SPLIT))"

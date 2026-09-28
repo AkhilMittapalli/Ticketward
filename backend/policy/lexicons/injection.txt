@@ -1,0 +1,70 @@
+# lexicon: injection
+# version: injection.v1
+# purpose: prompt-injection signals inside ticket text (rule P0, spec §7.3, §12.4): instruction
+#   overrides aimed at instructions/rules/prompt/policy, role and system-prompt claims, attempts to
+#   set labels or skip review ("do not escalate"), and delimiter or special-token spoofing.
+#   Ordinary wording must not fire: "please ignore my previous email" is a benign hard negative
+#   (the override pattern needs an instruction object, never email/message/ticket).
+# consumer: P6 policy engine rule P0 (non-terminal: reason prompt_injection_suspected, frontier
+#   disabled, template-only draft, spec §7.3.2), OR-ed with Llama Prompt Guard 2 (D-05); E1 rules
+#   baseline (ml/src/tw_ml/baselines/rules.py) records the reason in its policy preview.
+# groups: instruction_override, role_prompt, policy_bypass, delimiter_spoof.
+# matching: case-folded, NFKC-normalized, invisible characters stripped. Applied to the sanitized,
+#   PII-masked customer text (subject, latest message and customer-authored prior messages).
+#   Normalization, in order: remove Unicode format characters (category Cf: zero-width
+#   characters, bidi controls, BOM, soft hyphen, tag characters U+E0000-U+E007F) and variation
+#   selectors (U+FE00-U+FE0F, U+E0100-U+E01EF); NFKC; case-fold; NFKC again; fold typographic
+#   apostrophes (U+2018, U+2019, U+201B, U+02BC, U+2032) to '; collapse whitespace to one space.
+#   Homoglyphs are not folded. A pattern fires when it matches anywhere in the text; the evidence
+#   is the pattern id <lexicon>.<group>.<8 hex hash of the pattern>, never the matched text.
+#   The sanitizer (§12.4) records its own counts; masked placeholders such as <email_1> are
+#   never delimiters.
+# syntax: [group] opens a group. A plain line is a whole-word phrase: its words match in order,
+#   separated by any whitespace, with no word character directly before the first or after the
+#   last word; a trailing * on a word matches any further word characters. A line starting with
+#   re: is a Python regular expression (IGNORECASE) on the normalized text, written in lower case
+#   with ' as the only apostrophe. Lines starting with # are comments; blank lines are ignored;
+#   duplicate patterns and empty groups are errors (reference parser: tw_ml.baselines.lexicon).
+# changes: any edit bumps the version; versions enter policy_rule_sets.lexicon_versions and so
+#   policy_version (spec §7.3.3). Every group keeps >= 3 positive and >= 3 negative unit-test
+#   examples (ml/tests/test_lexicons.py; P6 adds the engine's own table tests).
+
+[instruction_override]
+re:\b(?:ignore|disregard|forget|override|bypass|skip)\s+(?:all\s+|any\s+|the\s+|your\s+|these\s+|those\s+|every\s+)?(?:(?:previous|prior|above|earlier|preceding|original|initial|system|existing|current|safety|security|developer)\s+)*(?:instructions?|rules|prompts?|polic(?:y|ies)|guidelines|directives|guardrails|constraints|programming|training)\b
+re:\b(?:new|updated|revised|real|actual|true|hidden|secret|additional)\s+instructions?\s*:
+re:\binstead\s*,?\s+(?:you\s+)?(?:must|should|will|need to)\s+(?:now\s+)?(?:output|respond|reply|answer|classify|label|mark|say|print|return)\b
+re:\bfrom\s+now\s+on\s*,?\s+you\s+(?:are|will|must|should|shall)\b
+
+[role_prompt]
+system prompt
+developer prompt
+developer message
+jailbreak*
+do anything now
+developer mode
+re:\byou\s+are\s+now\s+(?:a|an|the|my|in|acting|operating|playing|free|unrestricted|unfiltered|jailbroken|dan|developer|admin|root)\b
+re:(?:^|[.!?]\s+)(?:system|developer|assistant)\s*:
+re:\b(?:act|behave|respond)\s+as\s+(?:if\s+you\s+(?:are|were)\s+)?(?:a|an|the)\s+(?:different\s+|new\s+|unrestricted\s+|unfiltered\s+|jailbroken\s+)?(?:ai|assistant|model|chatbot|bot|system|admin|administrator|developer)\b
+re:\b(?:pretend|imagine)\s+(?:that\s+)?you\s+(?:are|were|have)\b
+re:\b(?:reveal|print|show|repeat|output|leak|dump)\s+(?:me\s+)?(?:your|the)\s+(?:system\s+|hidden\s+|original\s+|initial\s+)?(?:prompt|instructions|configuration)\b
+
+[policy_bypass]
+do not escalate
+don't escalate
+dont escalate
+no need to escalate
+re:\b(?:mark|set|flag|tag|label|classify|categori[sz]e|route|assign|move)\s+(?:this|it|the ticket|this ticket|me)\s+(?:as|to|at|with|into)\s+(?:a\s+)?(?:low|lowest|spam|approved|refund approved|not urgent|non-urgent|priority low|low priority)\b
+re:\b(?:classify|categori[sz]e|label|tag)\s+(?:this|it|the ticket|this ticket)?\s*as\s+[a-z]+(?:_[a-z0-9]+)+\b
+re:\b(?:set|change|lower|downgrade|reduce)\s+(?:the\s+|its\s+)?priority\s+(?:to|as)\s+(?:low|lowest|normal)\b
+re:\b(?:skip|bypass|avoid|don't|do not)\s+(?:the\s+)?(?:human|manual)\s+(?:review|approval|agent|check)\b
+re:\b(?:send|auto-?send)\s+(?:the\s+)?(?:reply|response|draft|answer)\s+(?:automatically|without\s+(?:review|approval|a human))\b
+re:\bthis\s+(?:ticket|request|message)\s+(?:is|has been)\s+(?:pre-?approved|already\s+approved|authori[sz]ed\s+by)\b
+
+[delimiter_spoof]
+re:</?\s*(?:ticket|source|sources|system|assistant|user|instructions?|context|developer|tool)\b[^>]{0,40}>
+re:<\|\s*(?:im_start|im_end|endoftext|system|user|assistant|eot_id|start_header_id|end_header_id|begin_of_text)\s*\|>
+re:\[/?inst\]
+re:<</?sys>>
+re:#{3,}\s*(?:system|instructions?|developer)\b
+re:\b(?:begin|start|end)\s+(?:of\s+)?(?:the\s+)?(?:system|developer|hidden)\s+(?:prompt|message|instructions)\b
+re:-{3,}\s*(?:end\s+of\s+(?:ticket|message|input)|new\s+(?:instructions|task|prompt))\b

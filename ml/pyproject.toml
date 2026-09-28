@@ -133,7 +133,8 @@ branch = true
 source = ["tw_ml"]
 
 [tool.coverage.report]
-# Gate for the P1 package (tw_ml.datagen); train/eval/export are empty until P2/P3.
+# Gate for tw_ml.datagen (P1), tw_ml.eval and tw_ml.baselines (P2); train/export are empty
+# until P2/P3.
 fail_under = 85
 show_missing = true
 skip_empty = true

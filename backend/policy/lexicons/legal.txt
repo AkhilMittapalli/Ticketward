@@ -1,0 +1,70 @@
+# lexicon: legal
+# version: legal.v1
+# purpose: privacy and data-protection requests (GDPR, CCPA, DPA, deletion or export of personal
+#   data) and legal threats (lawyer, attorney, sue, legal action, subpoena) for rule P3. Recall
+#   first: the model intent privacy_legal_request (primary or secondary) is OR-ed with this.
+# consumer: P6 policy engine rule P3 (terminal: human_escalation; reason forced_category_privacy
+#   for the privacy group or the intent, forced_category_legal_threat for the threat group;
+#   draft tpl_holding_legal; a threat-only hit keeps the routing queue, spec §7.3.2); E1 rules
+#   baseline (ml/src/tw_ml/baselines/rules.py) votes for privacy_legal_request.
+# groups: privacy (reason forced_category_privacy), threat (reason forced_category_legal_threat).
+# matching: case-folded, NFKC-normalized, invisible characters stripped. Applied to the sanitized,
+#   PII-masked customer text (subject, latest message and customer-authored prior messages).
+#   Normalization, in order: remove Unicode format characters (category Cf: zero-width
+#   characters, bidi controls, BOM, soft hyphen, tag characters U+E0000-U+E007F) and variation
+#   selectors (U+FE00-U+FE0F, U+E0100-U+E01EF); NFKC; case-fold; NFKC again; fold typographic
+#   apostrophes (U+2018, U+2019, U+201B, U+02BC, U+2032) to '; collapse whitespace to one space.
+#   Homoglyphs are not folded. A pattern fires when it matches anywhere in the text; the evidence
+#   is the pattern id <lexicon>.<group>.<8 hex hash of the pattern>, never the matched text.
+#   Names are masked (<PERSON_1>), so "sue" is matched only as a verb, never as a bare word.
+# syntax: [group] opens a group. A plain line is a whole-word phrase: its words match in order,
+#   separated by any whitespace, with no word character directly before the first or after the
+#   last word; a trailing * on a word matches any further word characters. A line starting with
+#   re: is a Python regular expression (IGNORECASE) on the normalized text, written in lower case
+#   with ' as the only apostrophe. Lines starting with # are comments; blank lines are ignored;
+#   duplicate patterns and empty groups are errors (reference parser: tw_ml.baselines.lexicon).
+# changes: any edit bumps the version; versions enter policy_rule_sets.lexicon_versions and so
+#   policy_version (spec §7.3.3). Every group keeps >= 3 positive and >= 3 negative unit-test
+#   examples (ml/tests/test_lexicons.py; P6 adds the engine's own table tests).
+
+[privacy]
+gdpr
+ccpa
+cpra
+dpa
+data processing agreement
+data processing addendum
+data protection act
+data protection officer
+data subject request
+data subject access request
+subject access request
+dsar
+right to be forgotten
+right to erasure
+right of access
+data portability
+privacy request
+re:\b(?:delete|erase|remove|wipe|purge)\s+(?:all\s+(?:of\s+)?(?:my|our|his|her|their|the)\s+(?:personal\s+)?(?:data|information|records)|(?:my|our|his|her|their)\s+personal\s+(?:data|information))\b
+re:\b(?:copy|export|list)\s+of\s+(?:all\s+)?(?:the\s+)?(?:my\s+|our\s+)?personal\s+(?:data|information)\b
+re:\b(?:data|information)\s+(?:you|taskmoor)\s+(?:hold|holds|have|has|store|stores|keep|keeps|process|processes)\s+(?:about|on)\s+(?:me|us|him|her|them)\b
+
+[threat]
+lawyer*
+attorney*
+solicitor*
+legal counsel
+legal action
+legal proceedings
+lawsuit*
+litigation
+subpoena*
+court order
+take you to court
+small claims
+cease and desist
+breach of contract
+re:\b(?:sue|suing|sued)\s+(?:you|taskmoor|your company|your firm|them)\b
+re:\b(?:will|going to|gonna|plan to|intend to|prepared to|ready to|shall)\s+sue\b
+re:\b(?:report|reporting)\s+(?:you|taskmoor|this|your company)\s+to\s+(?:the\s+)?(?:regulator|regulators|authorities|ftc|ico|cnil|data protection authority|consumer protection)\b
+re:\bour\s+legal\s+(?:team|department)\s+(?:will|is going to|is)\s+(?:be\s+)?(?:in touch|contacting|contact|reaching out|involved)\b

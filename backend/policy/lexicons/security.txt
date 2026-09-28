@@ -1,0 +1,104 @@
+# lexicon: security
+# version: security.v1
+# purpose: suspected unauthorized access, data exposure, vulnerability reports, leaked
+#   credentials and phishing (rule P2; security is always the highest-risk path, spec §5.1).
+#   Recall first: the model intent security_report (primary or secondary) is OR-ed with this.
+# consumer: P6 policy engine rule P2 (terminal: human_escalation, reason forced_category_security,
+#   queue security_and_privacy, draft mode none + tpl_security_ack, frontier forbidden); E1 rules
+#   baseline (ml/src/tw_ml/baselines/rules.py) votes for security_report.
+# groups: unauthorized_access, data_exposure, vulnerability, leaked_credentials, phishing.
+# matching: case-folded, NFKC-normalized, invisible characters stripped. Applied to the sanitized,
+#   PII-masked customer text (subject, latest message and customer-authored prior messages).
+#   Normalization, in order: remove Unicode format characters (category Cf: zero-width
+#   characters, bidi controls, BOM, soft hyphen, tag characters U+E0000-U+E007F) and variation
+#   selectors (U+FE00-U+FE0F, U+E0100-U+E01EF); NFKC; case-fold; NFKC again; fold typographic
+#   apostrophes (U+2018, U+2019, U+201B, U+02BC, U+2032) to '; collapse whitespace to one space.
+#   Homoglyphs are not folded. A pattern fires when it matches anywhere in the text; the evidence
+#   is the pattern id <lexicon>.<group>.<8 hex hash of the pattern>, never the matched text.
+#   Masked secrets appear as placeholders (<SECRET_TOKEN_1>, <TASKMOOR_API_KEY_1>, spec §12.5).
+# syntax: [group] opens a group. A plain line is a whole-word phrase: its words match in order,
+#   separated by any whitespace, with no word character directly before the first or after the
+#   last word; a trailing * on a word matches any further word characters. A line starting with
+#   re: is a Python regular expression (IGNORECASE) on the normalized text, written in lower case
+#   with ' as the only apostrophe. Lines starting with # are comments; blank lines are ignored;
+#   duplicate patterns and empty groups are errors (reference parser: tw_ml.baselines.lexicon).
+# changes: any edit bumps the version; versions enter policy_rule_sets.lexicon_versions and so
+#   policy_version (spec §7.3.3). Every group keeps >= 3 positive and >= 3 negative unit-test
+#   examples (ml/tests/test_lexicons.py; P6 adds the engine's own table tests).
+
+[unauthorized_access]
+unauthorized access
+unauthorised access
+unauthorized login
+unauthorised login
+unauthorized sign-in
+unauthorized user
+hacker*
+compromised account
+compromised credentials
+account takeover
+i didn't authorize
+we didn't authorize
+re:\bsomeone\s+(?:else\s+)?(?:has\s+)?(?:logged|signed|got|gotten|broke)\s+in(?:to)?\s+(?:to\s+)?(?:my|our|the|an?)\s+(?:\w+\s+){0,2}?accounts?\b
+re:\b(?:account|accounts|workspace|admin account|login)\s+(?:was|were|has been|have been|got|is|are)\s+(?:hacked|compromised|taken over|hijacked|breached)\b
+re:\b(?:been|was|were|got|get|getting|is|are)\s+hacked\b
+re:\b(?:unrecognized|unrecognised|unknown|unfamiliar|suspicious|strange)\s+(?:login|logins|log-in|sign-in|sign-ins|signin|sessions?|devices?|ip address|ip addresses|location)\b
+re:\b(?:signed|logged|sign|log)\s*-?\s*in\s+from\s+(?:an?\s+)?(?:unfamiliar|unknown|unrecognized|unrecognised|strange|foreign|different|another)\s+(?:country|location|device|ip|city)\b
+
+[data_exposure]
+data breach
+security breach
+data leak
+cross-tenant
+privilege escalation
+exposed publicly
+publicly exposed
+re:\b(?:was|were|been|got|has been|have been)\s+breached\b
+re:\bdata\s+(?:was|were|is|are|got|has been|have been)\s+(?:exposed|leaked|stolen)\b
+re:\b(?:can|could|able to)\s+(?:see|view|access|open|read|edit|download)\s+(?:\w+\s+){0,3}?(?:someone else's|other people's|another (?:customer|company|organization|organisation|tenant|workspace)'s|other (?:customers|companies|organizations|organisations|tenants|workspaces)(?:'|\s))
+re:\b(?:workspace|workspaces|project|projects|board|boards)\s+(?:that\s+)?(?:they|we|i|he|she)\s+(?:were|was|are|am|is|have|has)\s+(?:never|not)\s+(?:been\s+)?(?:invited|added|a member)\b
+
+[vulnerability]
+vulnerabilit*
+security flaw
+security hole
+security issue*
+security bug
+zero-day
+xss
+cross-site scripting
+sql injection
+csrf
+idor
+remote code execution
+rce
+responsible disclosure
+bug bounty
+re:\b(?:an?|this|the)\s+exploits?\b
+re:\bcve-\d{4}-\d{4,7}\b
+re:\bpen(?:etration)?\s?-?tests?\b
+
+[leaked_credentials]
+leaked token
+leaked api key
+leaked credentials
+leaked password*
+exposed api key
+exposed token
+exposed credentials
+re:\b(?:api\s+)?(?:token|tokens|key|keys|credentials|secret|secrets|password|passwords)\s+(?:was|were|got|has been|have been|is|are)\s+(?:accidentally\s+|mistakenly\s+|just\s+)?(?:leaked|exposed|published|pushed|committed|posted|stolen|shared publicly)\b
+re:\b(?:pushed|committed|posted|published|leaked|pasted)\s+(?:our|my|an?|the)\s+(?:\w+\s+){0,2}?(?:api\s+)?(?:tokens?|keys?|credentials|secrets?|passwords?)\s+(?:to|on|in|into)\s+(?:a\s+)?(?:public|github|gitlab|pastebin|slack)\b
+re:<(?:taskmoor_api_key|secret_token)_\d+>
+
+[phishing]
+phishing
+phish
+fake email
+fake e-mail
+fake login page
+fake sign-in page
+credential harvesting
+re:\bspoof(?:ed|ing)?\s+(?:e-?mails?|messages?|domain|sender|site|website|page)\b
+re:\b(?:e-?mail|message|sms|text|site|website|page)\s+(?:pretending|claiming|purporting)\s+to\s+be\s+(?:from\s+)?(?:taskmoor|you|your\s+(?:team|company|billing|support))\b
+re:\b(?:imitating|impersonating|posing as|pretending to be)\s+(?:taskmoor|your\s+(?:team|company|billing|support|staff)|you)\b
+re:\bsuspicious\s+(?:e-?mails?|links?|messages?|attachments?)\b

@@ -1,0 +1,96 @@
+# lexicon: human_request
+# version: human_request.v1
+# purpose: direct and indirect requests to reach a person (rule P1, safety rule S-02). Recall
+#   first: the model flag customer_requested_human is OR-ed with this lexicon (spec §7.3.1).
+# consumer: P6 policy engine rule P1 (terminal: human_escalation, reason customer_requested_human,
+#   action offer_human_contact, tpl_offer_human composition); E1 rules baseline
+#   (ml/src/tw_ml/baselines/rules.py) sets customer_requested_human; M-07d reads the groups.
+# groups: direct = an explicit request for a person (M-07d explicit); indirect = a call, a
+#   callback or someone taking over (M-07d indirect).
+# matching: case-folded, NFKC-normalized, invisible characters stripped. Applied to the sanitized,
+#   PII-masked customer text (subject, latest message and customer-authored prior messages).
+#   Normalization, in order: remove Unicode format characters (category Cf: zero-width
+#   characters, bidi controls, BOM, soft hyphen, tag characters U+E0000-U+E007F) and variation
+#   selectors (U+FE00-U+FE0F, U+E0100-U+E01EF); NFKC; case-fold; NFKC again; fold typographic
+#   apostrophes (U+2018, U+2019, U+201B, U+02BC, U+2032) to '; collapse whitespace to one space.
+#   Homoglyphs are not folded. A pattern fires when it matches anywhere in the text; the evidence
+#   is the pattern id <lexicon>.<group>.<8 hex hash of the pattern>, never the matched text.
+# syntax: [group] opens a group. A plain line is a whole-word phrase: its words match in order,
+#   separated by any whitespace, with no word character directly before the first or after the
+#   last word; a trailing * on a word matches any further word characters. A line starting with
+#   re: is a Python regular expression (IGNORECASE) on the normalized text, written in lower case
+#   with ' as the only apostrophe. Lines starting with # are comments; blank lines are ignored;
+#   duplicate patterns and empty groups are errors (reference parser: tw_ml.baselines.lexicon).
+# changes: any edit bumps the version; versions enter policy_rule_sets.lexicon_versions and so
+#   policy_version (spec §7.3.3). Every group keeps >= 3 positive and >= 3 negative unit-test
+#   examples (ml/tests/test_lexicons.py; P6 adds the engine's table tests, T-POLICY-human-request).
+
+[direct]
+speak to a human
+speak to a person
+speak to someone
+speak with a human
+speak with a person
+speak with someone
+speak to an agent
+speak with an agent
+speak to a manager
+speak to your manager
+speak to a supervisor
+speak to a representative
+talk to a human
+talk to a person
+talk to someone
+talk with someone
+talk to a real person
+talk to an actual person
+talk to an agent
+talk to a manager
+talk to a supervisor
+chat with a human
+chat with a person
+chat with an agent
+real person
+real human
+actual human
+live agent
+live person
+human agent
+human support
+a human please
+get me a human
+get me a person
+get me a manager
+escalate this to a manager
+not a bot
+not a chatbot
+no more bots
+re:\b(?:connect|transfer|put|pass|forward)\s+me\s+(?:through\s+)?(?:to|with)\s+(?:a|an|your)\s+(?:human|person|agent|manager|supervisor|representative|specialist)\b
+re:\b(?:i|we)(?:\s+(?:want|need|would like)|'d like)\s+(?:to\s+(?:speak|talk)\s+(?:to|with)\s+)?(?:a|an)\s+(?:human|person|real person|agent|manager|supervisor)\b
+re:\b(?:no|not|stop)\s+(?:more\s+|another\s+|the\s+|sending\s+(?:me\s+)?)?(?:automated|canned|scripted)\s+(?:reply|replies|response|responses|answer|answers|messages)\b
+
+[indirect]
+call me
+call us
+phone me
+phone us
+ring me
+give me a call
+give us a call
+give me a ring
+give us a ring
+reach out to me
+reach out to us
+get in touch with me
+get in touch with us
+contact me directly
+contact me by phone
+someone to take over
+re:\b(?:request|arrange|schedule|want|need|like|get|book)\s+(?:a\s+)?(?:phone\s+)?call-?back\b(?!\s*(?:url|uri|endpoint|function|handler))
+re:\b(?:can|could|would|will)\s+(?:someone|somebody|anyone|a person|one of you|one of your team)\s+(?:please\s+)?(?:actually\s+)?(?:call|phone|ring|contact|email|reach|get back to)\b
+re:\bhave\s+(?:someone|somebody|whoever|a person|one of your \w+)\s+(?:\w+\s+){0,4}?(?:call|contact|reach out|get in touch|phone|ring)\b
+re:\b(?:someone|somebody|a person)\s+(?:from|on|at)\s+(?:your|the)\s+(?:\w+\s+)?(?:team|side|company|support|office)\s+(?:to\s+|should\s+|could\s+|can\s+|please\s+|will\s+)?(?:call|contact|reach out|get in touch|phone|ring)\b
+re:\b(?:is there|do you have)\s+(?:a\s+)?(?:phone number|number (?:i|we) can call|hotline|support line|someone (?:i|we) can (?:talk|speak) to)\b
+re:\b(?:can|could)\s+we\s+(?:get|hop|jump|set up|schedule|book)\s+(?:on\s+)?a\s+(?:quick\s+)?(?:call|phone call|zoom|video call|meeting)\b
+re:\b(?:schedule|book|arrange)\s+a\s+(?:call|phone call)\s+with\s+(?:someone|somebody|your team|support|an engineer|a specialist|a person|the team)\b
+re:\b(?:hand|pass)\s+(?:this|me|us|it)\s+(?:over\s+)?to\s+(?:someone|somebody|a colleague|your colleague|a specialist|your team)\b

@@ -9,6 +9,7 @@ published dataset or run.
 | `datagen.yaml` | generator families, hosts (DeepInfra primary / Groq fallback for Family A, Mistral for Family B), request parameters, retry policy, $15 budget, terms snapshot | P1 |
 | `datagen_prices.v1.yaml` | dated per-million-token prices (as of 2026-09-27) for token accounting and the budget cap | P1 |
 | `leakage.yaml` | leakage checks C1-C7: thresholds, LSH parameters (asserted b=30, r=4), embedding model, KB and protected-string settings | P1 |
+| `rules_baseline.v1.yaml` | E1 rules baseline: keyword -> intent table, lexicon and error-code votes, product-area cues, priority, churn-ultimatum and sentiment cues; hashed into the E1 system id; revise on val only | P2 |
 
 Planned (P2/P3): `bakeoff.yaml`, `sft_qwen35_2b.yaml`, `sft_qwen3_1p7b.yaml`,
 `sft_qwen3_4b_2507.yaml`, `encoder_modernbert.yaml`. Base model names and revisions are chosen by

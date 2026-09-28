@@ -7,7 +7,8 @@ package: the only shared contract is the exported JSON Schemas in `schemas/json/
 | Path | Contents | Phase |
 |---|---|---|
 | `src/tw_ml/datagen/` | generation matrix and sampler, prompts, providers, generation loop, rule-checker, leakage C1-C7, label QA, manifests, hard set, Bitext OOD | P1 (built) |
-| `src/tw_ml/eval/` | metrics, bootstrap CIs, E1-E6 reports | P2, P10 |
+| `src/tw_ml/eval/` | metrics M-01..M-04 and M-07a..d, statistics (Wilson, stratified bootstrap B = 10,000, paired tests, Holm, seeds), gates, the sealed-split guard, `eval_report.v1` + Markdown; `python -m tw_ml.eval score/compare/render` | P2 (built), P10 |
+| `src/tw_ml/baselines/` | E1 rules baseline (`python -m tw_ml.baselines.rules`) and the policy-lexicon reference parser for `backend/policy/lexicons/` | P2 (built) |
 | `src/tw_ml/train/` | LoRA/QLoRA SFT (TRL), ModernBERT baseline | P3 |
 | `src/tw_ml/export/` | adapter merge, GGUF, Ollama Modelfile, HF Hub publishing | P3 |
 | `configs/` | `datagen.yaml`, `datagen_prices.v1.yaml`, `leakage.yaml` (training configs from P2) | P1+ |

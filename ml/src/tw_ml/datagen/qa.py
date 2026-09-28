@@ -12,6 +12,9 @@ Spec v1.1 §9.1 step 6 (ERPROT synthetic-data-generation D4, evaluation-statisti
   in 540; an intent at or above 4 errors per 45 audited records gets a full re-review;
 * second annotator: Cohen's kappa with a bootstrap CI; kappa < 0.80 triggers a guideline
   revision and re-review.
+
+The interval and agreement math lives in :mod:`tw_ml.eval.stats` (shared with the evaluation
+harness); ``wilson_interval`` and ``cohen_kappa`` here keep their P1 signatures.
 """
 
 import math
@@ -31,6 +34,8 @@ from tw_ml.datagen.taxonomy import (
     QueueValue,
     SentimentValue,
 )
+from tw_ml.eval.stats import cohen_kappa as shared_cohen_kappa
+from tw_ml.eval.stats import wilson_bounds
 
 Z_95: Final = 1.959963984540054
 AUDIT_SIZE: Final = 540
@@ -62,14 +67,7 @@ def wilson_interval(k: int, n: int, z: float = Z_95) -> tuple[float, float]:
     Raises:
         ValueError: If ``n`` is not positive or ``k`` is outside ``[0, n]``.
     """
-    if n <= 0 or not 0 <= k <= n:
-        msg = "need n > 0 and 0 <= k <= n"
-        raise ValueError(msg)
-    p = k / n
-    denominator = 1 + z * z / n
-    centre = (p + z * z / (2 * n)) / denominator
-    half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / denominator
-    return max(0.0, centre - half), min(1.0, centre + half)
+    return wilson_bounds(k, n, z)
 
 
 def audit_passes(errors: int, n: int = AUDIT_SIZE, max_rate: float = MAX_ERROR_RATE) -> bool:
@@ -284,7 +282,7 @@ def score_audit(
 
 
 def cohen_kappa(first: Sequence[str], second: Sequence[str]) -> float:
-    """Cohen's kappa for two raters on nominal labels.
+    """Cohen's kappa for two raters on nominal labels (shared implementation in eval.stats).
 
     Args:
         first: Labels of rater 1.
@@ -292,20 +290,8 @@ def cohen_kappa(first: Sequence[str], second: Sequence[str]) -> float:
 
     Returns:
         Kappa; ``nan`` when chance agreement is 1 (every label identical and constant).
-
-    Raises:
-        ValueError: If the sequences differ in length or are empty.
     """
-    if len(first) != len(second) or not first:
-        msg = "kappa needs two equally long, non-empty label sequences"
-        raise ValueError(msg)
-    n = len(first)
-    observed = sum(a == b for a, b in zip(first, second, strict=True)) / n
-    left, right = Counter(first), Counter(second)
-    expected = sum(left[label] * right[label] for label in left) / (n * n)
-    if math.isclose(expected, 1.0):
-        return math.nan
-    return (observed - expected) / (1 - expected)
+    return shared_cohen_kappa(first, second)
 
 
 @dataclass(frozen=True, slots=True)

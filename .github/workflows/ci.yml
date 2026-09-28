@@ -100,7 +100,7 @@ jobs:
         run: uv run python ../scripts/sync_research.py --scan-only
 
   ml-test:
-    name: ml / mypy + tests (tw_ml.datagen)
+    name: ml / mypy + tests (datagen, eval, baselines)
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     defaults:

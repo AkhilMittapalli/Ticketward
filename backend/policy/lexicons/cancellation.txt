@@ -1,0 +1,59 @@
+# lexicon: cancellation
+# version: cancellation.v1
+# purpose: intent to cancel, not renew, terminate or close the account, downgrade to free, or
+#   move to another product (rule P5, new in v1.1, A-09; the explicit-cancel and competitor cues
+#   of the A-06 churn rule). Recall first: the model intent cancellation_request (primary or
+#   secondary) is OR-ed with this lexicon. It must NOT fire on newsletter, digest or notification
+#   unsubscribes (the Bitext P-N probe, spec §9.1), nor on cancelling a task, export, meeting,
+#   order or invitation.
+# consumer: P6 policy engine rule P5 (terminal: human_escalation, reason
+#   forced_category_cancellation, tpl_holding_retention; a lexicon-only hit routes to
+#   customer_success_retention, spec §7.3.2); E1 rules baseline (ml/src/tw_ml/baselines/rules.py)
+#   votes for cancellation_request and sets churn_risk high.
+# groups: cancel_contract (cancel/terminate/close the subscription, plan, contract or account),
+#   non_renewal, downgrade_to_free, competitor_move (another tool, leaving Taskmoor, or a named
+#   product after "we're moving to"; the model's competitor_name entity complements it).
+# matching: case-folded, NFKC-normalized, invisible characters stripped. Applied to the sanitized,
+#   PII-masked customer text (subject, latest message and customer-authored prior messages).
+#   Normalization, in order: remove Unicode format characters (category Cf: zero-width
+#   characters, bidi controls, BOM, soft hyphen, tag characters U+E0000-U+E007F) and variation
+#   selectors (U+FE00-U+FE0F, U+E0100-U+E01EF); NFKC; case-fold; NFKC again; fold typographic
+#   apostrophes (U+2018, U+2019, U+201B, U+02BC, U+2032) to '; collapse whitespace to one space.
+#   Homoglyphs are not folded. A pattern fires when it matches anywhere in the text; the evidence
+#   is the pattern id <lexicon>.<group>.<8 hex hash of the pattern>, never the matched text.
+#   Guards: a cancel pattern is blocked when a newsletter/digest/notification/marketing word
+#   follows within 25-30 characters of the same clause (no . , ; ! ? in between).
+# syntax: [group] opens a group. A plain line is a whole-word phrase: its words match in order,
+#   separated by any whitespace, with no word character directly before the first or after the
+#   last word; a trailing * on a word matches any further word characters. A line starting with
+#   re: is a Python regular expression (IGNORECASE) on the normalized text, written in lower case
+#   with ' as the only apostrophe. Lines starting with # are comments; blank lines are ignored;
+#   duplicate patterns and empty groups are errors (reference parser: tw_ml.baselines.lexicon).
+# changes: any edit bumps the version; versions enter policy_rule_sets.lexicon_versions and so
+#   policy_version (spec §7.3.3). Every group keeps >= 3 positive and >= 3 negative unit-test
+#   examples (ml/tests/test_lexicons.py; P6 adds the engine's own table tests).
+
+[cancel_contract]
+re:\bcancel(?:l?ing|l?ed|lation\s+of)?\s+(?:(?:our|my|the|this|your)\s+)?(?:(?:taskmoor|annual|yearly|monthly|paid|business|enterprise|starter|team|company|whole|entire|current|remaining)\s+)*(?:subscriptions?|plans?|contracts?|accounts?|renewals?|memberships?|licen[cs]es?|seats|workspace)\b(?!\s+(?:invites?|invitations?|exports?|imports?|syncs?|deletion))(?![^.,;!?]{0,25}\b(?:newsletters?|digests?|mailing lists?|marketing|notifications?|updates|webinars?|blog)\b)
+re:\b(?:terminat(?:e|ing|ion\s+of)|end(?:ing)?|clos(?:e|ing)|shut(?:ting)?\s+down|discontinu(?:e|ing))\s+(?:our|my|the|this)\s+(?:(?:taskmoor|annual|paid|business|enterprise|company|whole|entire)\s+)*(?:subscription|contract|agreement|account|plan|workspace|membership)\b(?!\s+(?:tab|window|panel|sidebar|view|settings|menu|dialog|page))
+re:\b(?:want|wish|need|would like|'d like|decided|decide|plan|planning|going|have)\s+to\s+cancel\b(?![^.,;!?]{0,30}\b(?:newsletters?|digests?|mailing lists?|marketing|notifications?|updates|webinars?|blog|orders?|exports?|imports?|tasks?|meetings?|automations?|rules?|jobs?|invites?|invitations?|syncs?|reports?|events?)\b)
+re:\b(?:process|confirm|submit|request|requesting|file|initiate)\s+(?:our|my|the|a)\s+cancellation\b(?![^.,;!?]{0,25}\b(?:newsletters?|digests?|mailing lists?|notifications?|orders?|meetings?)\b)
+re:\b(?:stop|quit)\s+(?:using|paying for)\s+taskmoor\b
+re:\bno\s+longer\s+(?:need|want|use|require)\s+taskmoor\b
+
+[non_renewal]
+re:\b(?:not|won't|will not|don't|do not|aren't|are not|isn't|is not|wouldn't|would not|never)\s+(?:be\s+|going\s+to\s+|planning\s+to\s+|plan\s+to\s+|want\s+to\s+|intend\s+to\s+)?renew(?:ing|al)?\b
+re:\b(?:let|letting)\s+(?:the|our|my)\s+(?:subscription|contract|plan|licen[cs]e)\s+(?:lapse|expire|run out)\b
+re:\b(?:turn\s+off|disable|stop|cancel)\s+(?:the\s+)?auto-?\s?renew(?:al)?\b
+
+[downgrade_to_free]
+re:\bdowngrad\w*\s+(?:\w+\s+){0,3}?to\s+(?:the\s+)?free\b
+re:\b(?:move|moving|switch|switching|go|going|drop|dropping)\s+(?:\w+\s+){0,2}?(?:back\s+|down\s+)?to\s+the\s+free\s+(?:plan|tier|version)\b
+
+[competitor_move]
+re:\b(?:moving|switching|migrating|move|switch|migrate|moved|switched|migrated|going|transitioning)\s+(?:over\s+|all\s+|everything\s+|our\s+\w+\s+)?(?:away\s+)?(?:to|over to)\s+(?:another|a different|a competing|some other|an alternative)\s+(?:tool|vendor|provider|platform|product|solution|app|service|system)\b
+re:\b(?:leaving|leave|replacing|replace|dropping|ditching|abandoning)\s+taskmoor\b
+re:\b(?:moving|migrating|switching)\s+(?:away\s+)?(?:from|off)\s+taskmoor\b
+re:\b(?:signed|signing)\s+(?:up\s+)?with\s+(?:a\s+)?(?:competitor|another vendor|another provider|a different vendor)\b
+re:\bgo(?:ing)?\s+with\s+(?:a\s+)?(?:competitor|another vendor|another tool|a different tool)\b
+re:\b(?:we're|we are|we'll be|we will be|we're going to be|we are going to be)\s+(?:moving|switching|migrating)\s+(?:everything\s+|all\s+(?:of\s+)?our\s+\w+\s+|our\s+(?:team|teams|company|projects|work|workspace|data|boards)\s+)?(?:over\s+)?to\s+(?!(?:the|a|an|our|your|their|this|that|another|annual|monthly|yearly|free|paid|business|enterprise|starter|pro|premium|sso|saml|scim|okta|azure|entra|google|onelogin|slack|microsoft|github|gitlab|zapier|salesforce|outlook|windows|macos|ios|android|linux|chrome|firefox|safari|edge|version|v\d+|api|remote|production|staging|monday|tuesday|wednesday|thursday|friday|saturday|sunday|january|february|march|april|may|june|july|august|september|october|november|december|next|new|weekly|daily|taskmoor)\b)[a-z][\w.&'-]*

@@ -1,0 +1,48 @@
+# lexicon: billing_dispute
+# version: billing_dispute.v1
+# purpose: chargebacks and payment disputes with a bank or card issuer ("dispute with my bank",
+#   "reverse the charge") for rule P5. Recall first: the model intents billing_duplicate_charge
+#   and billing_payment_failure (primary or secondary) are OR-ed with this lexicon.
+# consumer: P6 policy engine rule P5 (terminal: human_escalation, reason
+#   forced_category_payment_dispute, tpl_holding_billing; a lexicon-only hit routes to
+#   billing_and_accounts, spec §7.3.2); E1 rules baseline (ml/src/tw_ml/baselines/rules.py).
+# groups: chargeback (a chargeback or formal dispute), bank_dispute (disputing or reversing a
+#   charge with the bank or card issuer, fraudulent-charge claims).
+# matching: case-folded, NFKC-normalized, invisible characters stripped. Applied to the sanitized,
+#   PII-masked customer text (subject, latest message and customer-authored prior messages).
+#   Normalization, in order: remove Unicode format characters (category Cf: zero-width
+#   characters, bidi controls, BOM, soft hyphen, tag characters U+E0000-U+E007F) and variation
+#   selectors (U+FE00-U+FE0F, U+E0100-U+E01EF); NFKC; case-fold; NFKC again; fold typographic
+#   apostrophes (U+2018, U+2019, U+201B, U+02BC, U+2032) to '; collapse whitespace to one space.
+#   Homoglyphs are not folded. A pattern fires when it matches anywhere in the text; the evidence
+#   is the pattern id <lexicon>.<group>.<8 hex hash of the pattern>, never the matched text.
+#   "charge back" as two words is matched only after a filing verb (time tracking "charges
+#   back" hours to clients).
+# syntax: [group] opens a group. A plain line is a whole-word phrase: its words match in order,
+#   separated by any whitespace, with no word character directly before the first or after the
+#   last word; a trailing * on a word matches any further word characters. A line starting with
+#   re: is a Python regular expression (IGNORECASE) on the normalized text, written in lower case
+#   with ' as the only apostrophe. Lines starting with # are comments; blank lines are ignored;
+#   duplicate patterns and empty groups are errors (reference parser: tw_ml.baselines.lexicon).
+# changes: any edit bumps the version; versions enter policy_rule_sets.lexicon_versions and so
+#   policy_version (spec §7.3.3). Every group keeps >= 3 positive and >= 3 negative unit-test
+#   examples (ml/tests/test_lexicons.py; P6 adds the engine's own table tests).
+
+[chargeback]
+chargeback*
+charge-back*
+re:\b(?:file|filing|filed|initiate|initiating|initiated|open|opening|opened|start|starting|started|issue|issuing|issued|request|requesting|requested|do|doing)\s+(?:a\s+)?charge\s+back\b
+re:\b(?:file|filing|filed|initiate|initiating|initiated|open|opening|opened|raise|raising|raised|start|starting|started|submit|submitting|submitted|lodge|lodging|lodged)\s+(?:a\s+)?(?:formal\s+)?(?:payment\s+|card\s+|credit\s+card\s+|bank\s+)?dispute\b
+
+[bank_dispute]
+dispute with my bank
+dispute with our bank
+fraudulent charge*
+unauthorized charge*
+unauthorised charge*
+re:\bdispute\s+(?:the|this|these|that|those|a|our|my|your)?\s*(?:charges?|payments?|transactions?|invoices?|bill)\b
+re:\bdispute\s+(?:it|this|them|that)\s+with\s+(?:my|our|the)\s+(?:bank|card issuer|credit card company|card company)\b
+re:\b(?:call|calling|called|contact|contacting|contacted|tell|telling|told|ask|asking|asked)\s+(?:my|our|the)\s+(?:bank|card issuer|credit card company|card company)\s+to\s+(?:reverse|dispute|cancel|block|stop|refuse|decline|refund)\b
+re:\breverse\s+(?:the|this|these|that|those)\s+(?:charges?|payments?|transactions?)\b
+re:\b(?:stop|cancel|block)\s+(?:the\s+)?payments?\s+(?:with|through|via|at)\s+(?:my|our|the)\s+bank\b
+re:\breport\w*\s+(?:this|it|the charge|these charges|the payment)\s+(?:as\s+(?:fraud|fraudulent|unauthori[sz]ed)|to\s+(?:my|our|the)\s+bank)\b

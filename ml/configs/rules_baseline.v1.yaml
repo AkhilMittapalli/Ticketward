@@ -1,0 +1,264 @@
+# E1 rules baseline (spec v1.1 §9.7: lexicons + regex + keyword -> intent table + priority
+# heuristics). Read by ml/src/tw_ml/baselines/rules.py together with
+# backend/policy/lexicons/*.txt (forced categories), data/spec/label_rules.v1.yaml (§5.8 routing,
+# §5.3 priority bases, the A-06 churn cues) and data/spec/fact_sheet.v1.md (entity vocabularies).
+#
+# Written by hand from spec §3/§5, docs/labeling_guidelines.md and the fact sheet before any
+# generated split existed. It may be revised against val only, never against a sealed split
+# (test_synth, hard_final, test_ood, e2e_scenarios). Any change is a new version: the E1 system id
+# hashes this file, the lexicons, the label rules and the fact sheet, so every published E1
+# number names the exact rules behind it.
+#
+# Pattern syntax is the lexicon syntax (see any lexicon header): a plain phrase matches whole
+# words in order on the normalized text (invisible characters stripped, NFKC, case-folded); a
+# trailing * on a word matches further word characters; "re:" introduces a regex.
+version: rules_baseline.v1
+taxonomy_version: "2026-09-v1"
+
+scoring:
+  candidate_min: 1.0 # an intent needs at least this score to be chosen at all
+  critical_min: 2.0 # a critical intent at or above this takes the primary position (guideline R2)
+  secondary_min: 2.0 # other intents at or above this become secondary intents (at most 2)
+
+# Tie-break order: critical intents first, then forced-review intents, then the rest.
+precedence:
+  - security_report
+  - service_outage
+  - billing_duplicate_charge
+  - billing_payment_failure
+  - cancellation_request
+  - privacy_legal_request
+  - refund_request
+  - sso_login_failure
+  - account_access_issue
+  - bug_report
+  - plan_pricing_inquiry
+  - how_to_question
+
+# Lexicon hits vote for intents (forced categories are model OR lexicon, spec §7.3.1).
+# secondary: false = the vote can make the intent primary but never adds it as a secondary
+# (a legal threat inside a billing ticket keeps the billing intent, guideline edge cases).
+lexicon_votes:
+  - { lexicon: security, intent: security_report, weight: 3.0 }
+  - { lexicon: legal, group: privacy, intent: privacy_legal_request, weight: 3.0 }
+  - { lexicon: legal, group: threat, intent: privacy_legal_request, weight: 1.5, secondary: false }
+  - { lexicon: refund, intent: refund_request, weight: 3.0 }
+  - { lexicon: cancellation, intent: cancellation_request, weight: 3.0 }
+  - { lexicon: billing_dispute, intent: billing_payment_failure, weight: 2.0, secondary: false }
+
+# Error codes (fact sheet) and HTTP statuses found in the text vote by prefix.
+code_votes:
+  - { prefix: SAML_ERR_, intent: sso_login_failure, weight: 2.0 }
+  - { prefix: SCIM_ERR_, intent: sso_login_failure, weight: 1.0 }
+  - { prefix: AUTH_ERR_, intent: account_access_issue, weight: 2.0 }
+  - { prefix: PERM_ERR_, intent: account_access_issue, weight: 2.0 }
+  - { prefix: MOB_ERR_SESSION, intent: account_access_issue, weight: 1.0 }
+  - { prefix: PAY_ERR_, intent: billing_payment_failure, weight: 2.0 }
+  - { prefix: BILL_ERR_SEAT_LIMIT, intent: plan_pricing_inquiry, weight: 1.0 }
+  - { prefix: PLAT_ERR_, intent: service_outage, weight: 2.0 }
+  - { prefix: HTTP 5, intent: service_outage, weight: 1.0 }
+  - { prefix: HTTP 4, intent: bug_report, weight: 1.0 }
+  - { prefix: API_ERR_, intent: bug_report, weight: 1.5 }
+  - { prefix: HOOK_ERR_, intent: bug_report, weight: 1.5 }
+  - { prefix: SYNC_ERR_, intent: bug_report, weight: 1.5 }
+  - { prefix: NOTIF_ERR_, intent: bug_report, weight: 1.5 }
+  - { prefix: MOB_ERR_SYNC, intent: bug_report, weight: 1.5 }
+  - { prefix: RPT_ERR_, intent: bug_report, weight: 1.5 }
+  - { prefix: AUTO_ERR_, intent: bug_report, weight: 1.5 }
+  - { prefix: IMP_ERR_, intent: bug_report, weight: 1.5 }
+  - { prefix: EXP_ERR_, intent: bug_report, weight: 1.5 }
+  - { prefix: TASK_ERR_, intent: bug_report, weight: 1.5 }
+  - { prefix: BOARD_ERR_, intent: bug_report, weight: 1.5 }
+
+# Guideline R10: the first action needs at least one of these literal entities.
+information_requirements:
+  sso_login_failure: [saml_idp, error_code]
+  billing_duplicate_charge: [invoice_id, charge_amount, charge_date]
+  billing_payment_failure: [invoice_id, charge_amount, charge_date, error_code]
+  refund_request: [invoice_id, charge_amount, charge_date]
+  bug_report: [feature_name, error_code, http_status, integration_name, api_endpoint]
+
+# Keyword -> intent table. Each pattern adds its weight once; weak cues (0.5) only reinforce.
+intent_keywords:
+  sso_login_failure:
+    - weight: 2.0
+      patterns: [sso, single sign-on, single sign on, saml, identity provider, idp, okta, onelogin,
+        azure ad, entra id, redirect loop, saml assertion]
+    - weight: 1.0
+      patterns: [scim, just-in-time provisioning, jit provisioning, domain verification,
+        login loop, sign-in loop, assertion, signing certificate]
+  account_access_issue:
+    - weight: 2.0
+      patterns: [password reset, reset my password, reset password, forgot my password,
+        forgot password, locked out, account locked, lockout, two-factor, two factor, 2fa, mfa,
+        verification code, invite link, invitation link, invite expired, invitation expired,
+        "re:\\b(?:can't|cannot|can not|unable to|couldn't)\\s+(?:log|sign)\\s*-?\\s*in\\b",
+        no access to this project, access denied, permission denied]
+    - weight: 1.0
+      patterns: [password, login, log in, sign in, sign-in, invite, invitation, guest, role,
+        permission*]
+  billing_duplicate_charge:
+    - weight: 3.0
+      patterns: [charged twice, billed twice, double charged, double-charged, double charge,
+        duplicate charge*, duplicate payment*, charged two times, charged us twice,
+        billed us twice, paid twice, two identical charges,
+        "re:\\b(?:charged|billed|paid)\\s+(?:\\S+\\s+){0,4}?(?:twice|two times|double|again for the same)\\b"]
+    - weight: 0.5
+      patterns: [duplicate, twice, double]
+  billing_payment_failure:
+    - weight: 2.0
+      patterns: [card declined, card was declined, card keeps getting declined, card is declined,
+        payment failed, payment failure, payment is failing, payment keeps failing, payment fails,
+        "payment didn't go through", payment did not go through,
+        "re:\\b(?:can't|cannot|unable to)\\s+pay\\b", 3d secure, 3ds, card expired, expired card,
+        suspension, suspended for non-payment, account suspended, past due, overdue invoice,
+        overdue payment, update our card, update the card, update payment method]
+    - weight: 1.0
+      patterns: [declined, payment method, grace period, unpaid invoice, unpaid, bank transfer]
+  refund_request:
+    - weight: 1.0
+      patterns: [overcharged, charged after we downgraded, wrong plan by mistake]
+  cancellation_request:
+    - weight: 0.5
+      patterns: [cancel, cancellation, cancelling, canceling]
+  plan_pricing_inquiry:
+    - weight: 2.0
+      patterns: [how much, pricing, price, prices, cost per seat, per seat, quote, discount,
+        nonprofit, non-profit, education discount, volume discount, annual billing,
+        upgrade to business, upgrade to enterprise, upgrade our plan, which plan, compare plans,
+        plan comparison, add seats, more seats, seat limit]
+    - weight: 1.0
+      patterns: [plan, plans, seats, upgrade, downgrade, trial, enterprise plan, business plan,
+        starter plan, free plan, billing cycle, prorat*]
+  service_outage:
+    - weight: 2.0
+      patterns: [outage, is taskmoor down, taskmoor is down, taskmoor down, site is down,
+        app is down, down for everyone, down for all, down for us, nothing loads,
+        nothing is loading, "won't load for anyone", not loading for anyone, nobody can access,
+        no one can access, service unavailable, gateway timeout, bad gateway,
+        internal server error, "re:\\b5\\d\\d\\s+errors?\\b"]
+    - weight: 1.5
+      patterns: [status page, degraded, entire company, whole company, whole org]
+    - weight: 1.0
+      patterns: [down, not loading, "won't load", "can't load", cannot load, fail to load,
+        fails to load, failing to load, unavailable, timing out, times out, timeout, spinning,
+        extremely slow, very slow, for everyone, everyone in our, all users, all of our users,
+        entire team, nobody can log in, no one can log in]
+  bug_report:
+    - weight: 2.0
+      patterns: [bug, bugs, glitch, crash*, broken, regression, "re:\\bstopped\\s+working\\b"]
+    - weight: 1.0
+      patterns: [error, errors, not working, "doesn't work", does not work, "isn't working",
+        is not working, fails, failed, failing, wrong, incorrect, missing, disappeared, stuck,
+        webhook*, exception, "re:\\breturns?\\s+(?:an?\\s+)?(?:\\d{3}|error)\\b", skips, skipped,
+        drops, dropped, not saving, "won't save", "doesn't save", misreads, duplicated]
+  how_to_question:
+    - weight: 2.0
+      patterns: [how do i, how can i, how to, how would i, how should i, is it possible to,
+        is there a way to, is there any way to, where do i, where can i, where is the,
+        where are the, can i, "what's the best way to", what is the best way to,
+        does taskmoor support, do you support, how does]
+    - weight: 1.0
+      patterns: [set up, setup, configure, enable, turn on, turn off, step by step, guide,
+        tutorial, documentation, help article]
+  security_report:
+    - weight: 1.0
+      patterns: [security, suspicious, compromised]
+  privacy_legal_request:
+    - weight: 1.0
+      patterns: [privacy, personal data, data protection]
+
+# Guideline R12: where the primary need lives. Fixed areas win over every cue; otherwise the
+# ticket's product_area_hint (weight 5), fact-sheet error-code areas (3) and the keywords below
+# decide, and the default applies when nothing matched.
+product_area_fixed:
+  billing_duplicate_charge: billing_subscriptions
+  billing_payment_failure: billing_subscriptions
+  refund_request: billing_subscriptions
+  cancellation_request: billing_subscriptions
+  plan_pricing_inquiry: billing_subscriptions
+  sso_login_failure: sso_identity
+  service_outage: platform_availability
+product_area_default:
+  account_access_issue: user_admin_permissions
+  bug_report: projects_tasks
+  how_to_question: projects_tasks
+  security_report: user_admin_permissions
+  privacy_legal_request: data_import_export
+  other_unclear: projects_tasks
+product_area_keywords:
+  sso_identity:
+    - { weight: 2.0, patterns: [sso, saml, single sign-on, scim, identity provider, okta, onelogin,
+        domain verification] }
+  user_admin_permissions:
+    - { weight: 1.0, patterns: [password, 2fa, mfa, two-factor, invite*, invitation*, role, roles,
+        permission*, guest*, member*, admin, audit log, locked out] }
+  billing_subscriptions:
+    - { weight: 1.0, patterns: [invoice*, billing, charge*, payment*, subscription*, renewal,
+        receipt*, price*, pricing] }
+  integrations_api:
+    - { weight: 1.5, patterns: [api, webhook*, api token*, integration*, slack, github, gitlab,
+        zapier, salesforce, microsoft teams, google drive, google calendar, outlook calendar,
+        endpoint*, rest api] }
+  notifications_email:
+    - { weight: 1.5, patterns: [notification*, digest, mention*, email-to-task] }
+  mobile_apps:
+    - { weight: 2.0, patterns: [mobile, ios app, android app, iphone, ipad, app store, play store,
+        push notification*, offline mode, mobile app] }
+    - { weight: 1.0, patterns: [android, ios] }
+  reporting_analytics:
+    - { weight: 1.5, patterns: [report, reports, dashboard*, analytics, workload, time tracking,
+        time report*, chart*] }
+  automations:
+    - { weight: 1.5, patterns: [automation*, rule template*, trigger*, run history] }
+  data_import_export:
+    - { weight: 1.5, patterns: [import*, export*, csv, excel, pdf export, workspace export] }
+  platform_availability:
+    - { weight: 1.0, patterns: [outage, status page, not loading, unavailable, region] }
+  boards_timelines:
+    - { weight: 1.5, patterns: [board, boards, kanban, timeline*, gantt, milestone*, swimlane*] }
+  projects_tasks:
+    - { weight: 1.0, patterns: [task, tasks, subtask*, project*, custom field*, dependenc*,
+        recurring task*, task template*] }
+
+# Priority: label_rules.v1 gives each intent a base and a severe level (guideline R4); a severe
+# cue selects the severe level. The §5.3 floors (rule N3) then apply: security_report >= high,
+# service_outage = urgent, payment failure + suspension cue >= high, enterprise org-wide SSO
+# failure = urgent, enterprise + frustrated/angry = one level above.
+priority:
+  severe: [urgent, asap, as soon as possible, critical, blocking, blocker, blocked,
+    production is down, production down, nobody can, no one can, entire team, whole team,
+    entire company, whole company, whole org, whole organization, all users, everyone,
+    data loss, lost data, losing data, deadline, client demo, "can't work", cannot work]
+  suspension: [suspension, suspend*, deactivat*, shut off, grace period, lose access,
+    lock us out]
+  org_wide: [whole org, whole organization, whole company, entire company, entire org,
+    nobody can log in, no one can log in, nobody can sign in, no one can sign in, all users,
+    everyone]
+  org_wide_user_count: 10
+
+# Churn (§5.5, A-06): high = explicit cancel (cancellation lexicon groups), a named product the
+# customer moves to (competitor_move group or a named product), or one of these ultimatums;
+# medium = the label-rules vague-alternatives / repeated-contact cues, >= 3 contacts in 30 days,
+# or a frustrated/angry business or enterprise customer.
+churn:
+  ultimatum: [last chance, final warning, final notice,
+    "re:\\b(?:we|i)(?:'ll| will| are going to|'re going to| am going to|'m going to)\\s+(?:leave|walk away|go elsewhere|take our business elsewhere|look elsewhere)\\b",
+    "re:\\bif\\s+(?:this|it|that)\\s+(?:isn't|is not|doesn't|does not|can't|cannot|won't|is still not)\\s+(?:get\\s+|be\\s+)?(?:fixed|resolved|refunded|sorted)\\b",
+    "re:\\bor\\s+(?:else\\s+)?(?:we're|we are|we will be|i'm|i am)\\s+(?:out|done|leaving|gone)\\b",
+    "re:\\b(?:unless|until)\\s+(?:this|it)\\s+(?:is|gets)\\s+(?:fixed|resolved|refunded)\\b"]
+
+# Sentiment of the latest message (subject + message; guideline R5).
+sentiment:
+  angry: [unacceptable, ridiculous, furious, outrageous, absurd, disgrace*, pathetic, worst,
+    incompetent, this is a joke, sick of, how dare, scam, "re:\\bwtf\\b"]
+  frustrated: [frustrat*, annoy*, disappoint*, fed up, still not, still no, yet again,
+    again and again, keeps happening, waste of time, not happy, unhappy, tired of, third time,
+    second time, no response, nobody has replied, "re:\\bhow\\s+many\\s+times\\b"]
+  confused: [confus*, not sure, unsure, "don't understand", do not understand, unclear,
+    "i'm lost", makes no sense, "doesn't make sense", which one, what does]
+  positive: [thank you so much, thanks so much, much appreciated, really appreciate, love,
+    great job, awesome, amazing, fantastic, excellent, happy with, that fixed it, works now]
+  caps_ratio_min: 0.6
+  caps_letters_min: 20
+  exclamations_min: 2
