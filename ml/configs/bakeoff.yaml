@@ -1,0 +1,159 @@
+# E3 zero-shot bake-off (spec v1.1 §9.5 "Protocol" and "Score"; A-02; ERPROT slm-model-selection).
+# Loaded and validated by tw_ml.eval.bakeoff_config; run with `python -m tw_ml.eval.bakeoff`.
+#
+# Every candidate is served from a GGUF the owner converts from the official safetensors with the
+# llama.cpp build the pinned Ollama ships (BF16 -> Q4_K_M, no imatrix), created locally as
+# `tw-bakeoff-<id>` (ml/configs/README.md, "Bake-off artifacts"). No Ollama library tags and no
+# third-party GGUFs: they mix quantization levels and are a supply-chain risk (R-12).
+#
+# Nothing below is verified yet. Before a candidate runs, the owner pins hf_revision to the commit
+# SHA, converts and creates the model, records ollama_digest, generates its prompt_format file and
+# sets verify_before_run: false. The runner refuses unverified candidates unless
+# --allow-unverified is passed, and records that in every summary.
+version: bakeoff.v1
+prompt_version: triage.v1
+decoding_schema: triage_model_output.decoding.json # schemas/json/, exported by the backend
+output_dir: evals/runs/bakeoff
+splits: # open splits only; the holdout guard refuses anything sealed (P2 runs val + hard_dev)
+  val: data/generated/val/records.jsonl
+  hard_dev: evals/hard_dev.v1.jsonl
+
+ollama:
+  base_url: http://127.0.0.1:11434
+  version: 0.34.4 # pinned Ollama (verify at build time); its llama.cpp build converts the GGUFs
+  llama_cpp_build: b11081 # LLAMA_CPP_VERSION of Ollama v0.34.4 (verify)
+  timeout_s: 300 # read timeout per request: CPU decode of a 4B model with a ~1.5K-token prompt
+  connect_timeout_s: 5
+  retries: 1 # connection errors and 5xx only; 4xx and read timeouts are never retried
+  backoff_s: 2
+  keep_alive: 30m
+  max_consecutive_failures: 5 # abort a candidate when the server keeps failing
+
+request: # POST /api/generate, identical for every candidate (§9.5)
+  raw: true
+  stream: false
+  truncate: false # fail loudly instead of cutting an oversized prompt (verify end to end)
+  shift: false # ERPROT constrained-decoding: no silent context shift either (verify)
+  options:
+    temperature: 0
+    num_ctx: 8192 # Ollama defaults to 4k on CPU
+    num_predict: 512
+    seed: 42
+    repeat_penalty: 1.0
+  cpu_options: # the CPU sample mode (dev laptop: Ryzen 7 8840HS, 8 cores)
+    num_gpu: 0
+    num_thread: 8
+
+sampling:
+  cpu_sample_n: 50 # §9.5: 50-ticket CPU latency sample (use --n 100 for the identical-output check)
+  sample_seed: 42
+  nonce_salt: bakeoff.v1 # derived per-record nonces make reruns render byte-identical prompts
+
+score: # S = 0.40 macroF1 + 0.25 min_critical_recall + 0.20 min(1, 5 s / triage_P50) + 0.15 Lic
+  w_macro_f1: 0.40
+  w_min_critical_recall: 0.25
+  w_latency: 0.20
+  w_license: 0.15
+  latency_target_s: 5.0
+  min_gain_macro_f1: 0.03 # a larger size class wins only with >= 3 points, and only with M-08 met
+  m08_p50_s: 5.0
+  m08_p95_s: 12.0
+
+# Size classes follow the §9.5 method table: <= 2B -> LoRA on an fp16 base; 3-4B -> QLoRA (NF4).
+# Lic: 1.0 Apache-2.0/MIT, 0.5 Llama 3.2 Community License; non-commercial licenses are excluded
+# (Qwen2.5-3B-Instruct, Qwen Research License, is dropped and must not appear).
+candidates:
+  - id: qwen35-2b
+    role: default
+    hf_repo: Qwen/Qwen3.5-2B
+    hf_revision: <verify>
+    license: apache-2.0
+    lic: 1.0
+    params_b: 2.0
+    finetune_method: lora_fp16
+    ollama_model: tw-bakeoff-qwen35-2b
+    prompt_format: ml/configs/prompt_formats/qwen35-2b.json
+    verify_before_run: true
+    notes: >-
+      Hybrid Gated DeltaNet; convert the text-only Qwen3_5ForCausalLM weights (no mmproj).
+      Non-thinking by default; the template renders an empty think block. Prefix-cache reuse of the
+      static system prompt under Ollama is unverified (check prompt_eval_count).
+  - id: qwen3-1.7b
+    role: fallback
+    hf_repo: Qwen/Qwen3-1.7B
+    hf_revision: <verify>
+    license: apache-2.0
+    lic: 1.0
+    params_b: 1.7
+    finetune_method: lora_fp16
+    ollama_model: tw-bakeoff-qwen3-1.7b
+    prompt_format: ml/configs/prompt_formats/qwen3-1.7b.json
+    verify_before_run: true
+    notes: Pure transformer, lowest tooling risk; enable_thinking=False renders an empty think block.
+  - id: qwen3-4b-2507
+    role: in-family test of the 3-point rule
+    hf_repo: Qwen/Qwen3-4B-Instruct-2507
+    hf_revision: <verify>
+    license: apache-2.0
+    lic: 1.0
+    params_b: 4.0
+    finetune_method: qlora_nf4
+    ollama_model: tw-bakeoff-qwen3-4b-2507
+    prompt_format: ml/configs/prompt_formats/qwen3-4b-2507.json
+    verify_before_run: true
+    notes: Non-thinking only (no think tags). Main risk is CPU latency at 4B.
+  - id: llama32-3b
+    role: cross-family comparator
+    hf_repo: meta-llama/Llama-3.2-3B-Instruct
+    hf_revision: <verify>
+    license: llama3.2
+    lic: 0.5
+    params_b: 3.21
+    finetune_method: qlora_nf4
+    ollama_model: tw-bakeoff-llama32-3b
+    prompt_format: ml/configs/prompt_formats/llama32-3b.json
+    verify_before_run: true
+    notes: >-
+      Gated repo (accept the license on HF first). Fixed date_string "26 Sep 2026". The template
+      emits BOS itself: confirm runtime_adds_bos against the GGUF to avoid a double BOS. If it wins,
+      the registry name starts with "Llama" and "Built with Llama" is displayed.
+  - id: phi4-mini
+    role: Phi-family mini
+    hf_repo: microsoft/Phi-4-mini-instruct
+    hf_revision: <verify>
+    license: mit
+    lic: 1.0
+    params_b: 3.8
+    finetune_method: qlora_nf4
+    ollama_model: tw-bakeoff-phi4-mini
+    prompt_format: ml/configs/prompt_formats/phi4-mini.json
+    verify_before_run: true
+    notes: 200K vocabulary; no TRL auto-template (prompt-completion data). CPU latency at 3.8B.
+  - id: gemma4-e2b
+    role: optional
+    optional: true
+    hf_repo: google/gemma-4-E2B-it
+    hf_revision: <verify>
+    license: apache-2.0
+    lic: 1.0
+    params_b: 5.1
+    finetune_method: qlora_nf4
+    ollama_model: tw-bakeoff-gemma4-e2b
+    prompt_format: ml/configs/prompt_formats/gemma4-e2b.json
+    verify_before_run: true
+    notes: >-
+      5.1B total, 2.3B effective (per-layer embeddings); the §9.5 method table does not list it, so
+      it is sized by total parameters (QLoRA; verify). fp16 overflow on T4. Convert text only.
+  - id: qwen35-0.8b
+    role: optional latency floor
+    optional: true
+    hf_repo: Qwen/Qwen3.5-0.8B
+    hf_revision: <verify>
+    license: apache-2.0
+    lic: 1.0
+    params_b: 0.8
+    finetune_method: lora_fp16
+    ollama_model: tw-bakeoff-qwen35-0.8b
+    prompt_format: ml/configs/prompt_formats/qwen35-0.8b.json
+    verify_before_run: true
+    notes: Accuracy risk at 0.8B; same hybrid architecture and template as Qwen3.5-2B.

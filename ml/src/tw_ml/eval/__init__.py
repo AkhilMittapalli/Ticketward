@@ -10,8 +10,12 @@ Modules:
 * ``gates`` - the §9.8 acceptance gates and the phase exits, as data
 * ``holdout`` - the sealed-split guard and the ``evals/sealed_access.jsonl`` log
 * ``report`` - ``eval_report.v1`` / ``eval_comparison.v1`` schemas and Markdown rendering
+* ``repair`` - the validity ladder of §6.6: first pass, deterministic repair level 1, fail closed
+* ``ollama`` - the minimal Ollama HTTP client (raw ``/api/generate``, preflight, retry policy)
+* ``bakeoff_config`` / ``bakeoff`` / ``bakeoff_rank`` - the E3 zero-shot bake-off (§9.5):
+  config and protocol rules, the runner (``python -m tw_ml.eval.bakeoff run``) and the ranking
 
 Run ``python -m tw_ml.eval --help``. Planned: ``e2e`` (E5 against the Compose stack),
-``retrieval`` (Recall@k, MRR, nDCG), ``latency`` (M-08), ``calibration`` (M-12), ``bakeoff``
-(the E3 driver) and the OOD scorer (P2-P10).
+``retrieval`` (Recall@k, MRR, nDCG), ``latency`` (M-08), ``calibration`` (M-12) and the OOD
+scorer (P3-P10).
 """

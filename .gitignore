@@ -57,6 +57,9 @@ data/exports/
 data/**/*.parquet
 data/**/*.arrow
 data/**/*.feather
+# Evaluation run outputs quote dataset tickets (predictions, raw model text); only reports,
+# the analysis plan, the sealed-access log and the open gold files are tracked.
+evals/runs/
 mlruns/
 mlartifacts/
 wandb/

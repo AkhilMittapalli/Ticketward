@@ -153,18 +153,21 @@ run: ## Run the API locally with reload against the dev stack (reads ../.env)
 .PHONY: security
 security: ## bandit + pip-audit locally (gitleaks, Trivy, Semgrep run in CI; see security.yml)
 	uvx --from "bandit[toml]==1.9.4" bandit -c backend/pyproject.toml -r backend/src scripts ml/src
-	$(UV_BACKEND) export --frozen --no-emit-project --format requirements-txt -o "$${TMPDIR:-/tmp}/tw-requirements.txt"
+	$(UV_BACKEND) export --frozen --no-emit-project --all-extras --format requirements-txt -o "$${TMPDIR:-/tmp}/tw-requirements.txt"
 	uvx pip-audit==2.10.1 --requirement "$${TMPDIR:-/tmp}/tw-requirements.txt" --require-hashes --disable-pip --strict
+	$(UV_ML) export --frozen --no-emit-project --all-extras --format requirements-txt -o "$${TMPDIR:-/tmp}/tw-ml-requirements.txt"
+	uvx pip-audit==2.10.1 --requirement "$${TMPDIR:-/tmp}/tw-ml-requirements.txt" --require-hashes --disable-pip --strict
 	@command -v gitleaks >/dev/null && gitleaks git --redact --no-banner . || echo "gitleaks not installed; runs in pre-commit and CI"
 
 # ------------------------------------------------------------------ planned (later phases)
 EVAL := $(UV_ML) run python -m tw_ml.eval
 E1 := $(UV_ML) run python -m tw_ml.baselines.rules
+BAKEOFF := $(UV_ML) run python -m tw_ml.eval.bakeoff
 EVAL_DATE ?= $(shell date -u +%Y-%m-%d)
 VAL_GOLD ?= ../data/generated/val/records.jsonl
 HARD_DEV_GOLD ?= ../evals/hard_dev.v1.jsonl
 
-.PHONY: seed eval-baselines eval-bakeoff eval-smoke eval-slm eval-e2e eval-retrieval bench-latency report demo-reset
+.PHONY: seed eval-baselines bakeoff-dry-run eval-bakeoff-run eval-bakeoff eval-smoke eval-slm eval-e2e eval-retrieval bench-latency report demo-reset
 seed: ## Seed synthetic demo data (planned in P1/P9)
 	@echo "seed: planned in P1 (synthetic KB + accounts) and P9 (demo seed)"
 
@@ -176,9 +179,19 @@ eval-baselines: ## E1 (+ E2 seeds) on val + hard_dev -> baselines.md (P2; sealed
 	# E2 (Kaggle): $(EVAL) score --experiment E2 --split val --gold $(VAL_GOLD) --pred s42=.. --pred s1337=.. --pred s2026=.. --deployed-seed <val-best>
 	$(EVAL) render --title "P2 baselines (val + hard_dev)" --out ../evals/reports/$(EVAL_DATE)/baselines.md $$(for f in ../evals/reports/$(EVAL_DATE)/E[12]_*.json; do printf -- '--report %s ' "$$f"; done)
 
-eval-bakeoff: ## E3 bake-off: score each candidate's val predictions (from the P2 Ollama driver) -> bakeoff.md
-	for p in ../evals/runs/bakeoff/*_val.jsonl; do $(EVAL) score --experiment E3 --split val --gold $(VAL_GOLD) --pred "$$p" --date $(EVAL_DATE); done
-	$(EVAL) render --title "P2 bake-off (E3, val)" --out ../evals/reports/$(EVAL_DATE)/bakeoff.md $$(for f in ../evals/reports/$(EVAL_DATE)/E3_*.json; do printf -- '--report %s ' "$$f"; done)
+bakeoff-dry-run: ## E3: check the bake-off config, holdout guard, inputs and prompt formats; calls nothing
+	$(BAKEOFF) run --dry-run
+
+eval-bakeoff-run: ## E3 runs on local Ollama: constrained, unconstrained (spec 9.4) and the CPU-latency sample (R-15)
+	$(BAKEOFF) run
+	$(BAKEOFF) run --unconstrained
+	$(BAKEOFF) run --mode cpu-sample
+
+eval-bakeoff: ## E3 bake-off: score each candidate's val (+ hard_dev) predictions -> bakeoff.md + ranking
+	for p in ../evals/runs/bakeoff/*_val.jsonl; do [ -e "$$p" ] || continue; $(EVAL) score --experiment E3 --split val --gold $(VAL_GOLD) --pred "$$p" --date $(EVAL_DATE); done
+	for p in ../evals/runs/bakeoff/*_hard_dev.jsonl; do [ -e "$$p" ] || continue; $(EVAL) score --experiment E3 --split hard_dev --gold $(HARD_DEV_GOLD) --pred "$$p" --date $(EVAL_DATE); done
+	$(EVAL) render --title "P2 bake-off (E3, val + hard_dev)" --out ../evals/reports/$(EVAL_DATE)/bakeoff.md $$(for f in ../evals/reports/$(EVAL_DATE)/E3_*.json; do printf -- '--report %s ' "$$f"; done)
+	$(BAKEOFF) rank --date $(EVAL_DATE)
 
 eval-smoke: ## Spec 9.10 smoke eval (deterministic, no model; needs evals/smoke from P6); exits 1 on a gate miss
 	$(E1) --input ../evals/smoke/smoke.v1.jsonl --out $${TMPDIR:-/tmp}/tw-e1-smoke.jsonl

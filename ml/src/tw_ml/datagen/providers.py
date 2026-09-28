@@ -14,7 +14,8 @@ an :class:`ApiKey`, whose ``repr``/``str`` are redacted; it is sent in one heade
 appears in logs, exceptions or files. Response bodies are never copied into error messages.
 
 This module is the only place in ``tw_ml`` that constructs an HTTP client (the ml analogue of
-the backend's T-NO-SEND rule; ``tests/test_providers.py`` enforces it).
+the backend's T-NO-SEND rule; ``tests/test_providers.py`` enforces it). Other modules get theirs
+from :func:`build_http_client`.
 """
 
 import math
@@ -617,6 +618,27 @@ class ChatProvider(Protocol):
         ...
 
 
+def build_http_client(
+    *, timeout: httpx.Timeout, base_url: str = "", transport: httpx.BaseTransport | None = None
+) -> httpx.Client:
+    """Construct an HTTP client: the single construction site in ``tw_ml`` (T-NO-SEND analogue).
+
+    Redirects are never followed. Other modules that need HTTP (the E3 Ollama client in
+    ``tw_ml.eval.ollama``) get their client here, so outbound HTTP stays auditable in one place.
+
+    Args:
+        timeout: Explicit timeouts.
+        base_url: Base URL for relative request paths.
+        transport: Transport override (tests use ``httpx.MockTransport``).
+
+    Returns:
+        The client.
+    """
+    return httpx.Client(
+        base_url=base_url, timeout=timeout, transport=transport, follow_redirects=False
+    )
+
+
 class OpenAICompatibleProvider:
     """Chat-completions client for any OpenAI-compatible host (DeepInfra, Groq, Mistral...)."""
 
@@ -638,7 +660,7 @@ class OpenAICompatibleProvider:
         """
         self._settings = settings
         timeout = httpx.Timeout(settings.http.timeout_s, connect=settings.http.connect_timeout_s)
-        self._client = client or httpx.Client(timeout=timeout, follow_redirects=False)
+        self._client = client or build_http_client(timeout=timeout)
         self._sleep = sleep
         self._rng = rng or random.Random()  # noqa: S311 - retry jitter only  # nosec B311
 

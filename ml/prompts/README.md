@@ -20,11 +20,28 @@ Rules (spec §9.1, ERPROT `synthetic-data-generation` D6):
 * template ids are recorded as `template_id` and must be disjoint between splits (leakage C4);
 * the static prompt text is also scanned by the report-only prompt-echo probe.
 
+## Triage prompt (`triage.v1.txt`, P2)
+
+The SLM triage prompt (spec §9.4), rendered by `tw_ml.prompts` for E3 zero-shot, the SFT targets
+(P3) and the serving parity tests (P4):
+
+* a **static system section**: role, the untrusted-data rule, the key list in output order, every
+  intent with its definition and default queue/action, and the labeling rules with every enum
+  value of the decoding schema. It is byte-identical for every request, so a serving prefix cache
+  can reuse it. About 5.8K characters (roughly 1.2-1.5K tokens, tokenizer-dependent; the spec
+  estimated ~350);
+* a **user section** with `{{metadata_json}}` (one JSON line: tier, channel, product-area hint,
+  received_at), `{{nonce}}` (the per-request delimiter id of `<ticket-{nonce}>`, A-16) and
+  `{{ticket}}` (subject, earlier messages oldest first, latest message);
+* the renderer neutralizes special-token literals and `<ticket-` tags in ticket text (`<` becomes
+  `&lt;`), refuses a nonce that occurs in the ticket, and returns the target as minified
+  `TriageLabels` JSON in decoding-schema key order. `tests/test_triage_prompt.py` checks that
+  every model-facing taxonomy value appears in the system text.
+
 ## Planned
 
 | File | Used by | Phase |
 |---|---|---|
-| `triage.v1.txt` | SLM triage (`TriageModelOutput`, JSON-schema constrained) | P2 |
 | `draft.v1.txt` | grounded drafting with numbered `<source id=n>` blocks | P6 |
 | `handoff.v1.txt` | `one_line_summary` / `customer_problem` of handoff briefs | P7 |
 

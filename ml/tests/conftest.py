@@ -6,9 +6,12 @@ Helpers are exposed as fixtures because ``--import-mode=importlib`` keeps test m
 importing each other (same convention as the backend suite).
 """
 
+import hashlib
 import json
 import os
 import random
+import re
+import shutil
 from collections import Counter
 from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass, field, replace
@@ -16,9 +19,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+import httpx
 import keyring
 import keyring.backend
 import pytest
+import yaml
 from keyring.errors import PasswordDeleteError
 
 from tw_ml.datagen.bitext import BitextMapping, BitextRow, SourceSpec
@@ -38,6 +43,14 @@ from tw_ml.datagen.records import (
 from tw_ml.datagen.taxonomy import Taxonomy
 from tw_ml.datagen.text import content_sha256
 from tw_ml.datagen.validate import ValidationContext
+from tw_ml.eval import bakeoff
+from tw_ml.export.prompt_format import (
+    GoldenRendering,
+    PromptFormat,
+    render_raw,
+    write_prompt_format,
+)
+from tw_ml.prompts import load_triage_prompt
 
 FIXED_NOW = datetime(2026, 9, 27, 12, 0, tzinfo=UTC)
 FILLER = ["please", "look", "into", "this", "for", "our", "team", "soon"]
@@ -766,3 +779,280 @@ class FakeBitextSource:
 def fake_bitext_source() -> type[FakeBitextSource]:
     """In-memory stand-in for the Hugging Face datasets (tests never download)."""
     return FakeBitextSource
+
+
+# --------------------------------------------------------------------------- bake-off (E3)
+
+BAKEOFF_SHA = "a" * 40
+BAKEOFF_DIGEST = "ab" * 32
+CHATML: dict[str, str] = {
+    "system_prefix": "<|im_start|>system\n",
+    "system_suffix": "<|im_end|>\n",
+    "user_prefix": "<|im_start|>user\n",
+    "user_suffix": "<|im_end|>\n",
+    "generation_prefix": "<|im_start|>assistant\n<think>\n\n</think>\n\n",
+}
+# One val ticket per critical class plus a bug report: (intent, queue, action, product area).
+BAKEOFF_CASES: tuple[tuple[str, str, str, str], ...] = (
+    ("security_report", "security_and_privacy", "escalate_to_security", "user_admin_permissions"),
+    (
+        "service_outage",
+        "incident_response",
+        "check_known_incident_and_share_status",
+        "platform_availability",
+    ),
+    (
+        "cancellation_request",
+        "customer_success_retention",
+        "escalate_to_csm_retention",
+        "billing_subscriptions",
+    ),
+    (
+        "billing_duplicate_charge",
+        "billing_and_accounts",
+        "escalate_to_billing_for_review",
+        "billing_subscriptions",
+    ),
+    (
+        "billing_payment_failure",
+        "billing_and_accounts",
+        "escalate_to_billing_for_review",
+        "billing_subscriptions",
+    ),
+    (
+        "bug_report",
+        "technical_support_tier_2",
+        "collect_repro_steps_and_escalate_to_engineering",
+        "data_import_export",
+    ),
+)
+BAKEOFF_CANDIDATES: tuple[dict[str, Any], ...] = (
+    {
+        "id": "small-a",
+        "hf_repo": "Qwen/Qwen3-1.7B",
+        "params_b": 1.7,
+        "finetune_method": "lora_fp16",
+    },
+    {
+        "id": "big-b",
+        "hf_repo": "Qwen/Qwen3-4B-Instruct-2507",
+        "params_b": 4.0,
+        "finetune_method": "qlora_nf4",
+    },
+    {
+        "id": "tiny-c",
+        "hf_repo": "Qwen/Qwen3.5-0.8B",
+        "params_b": 0.8,
+        "finetune_method": "lora_fp16",
+        "optional": True,
+    },
+)
+_RECORD_ID = re.compile(r"\b(?:va|th|ts)_[0-9a-z_]+\b")
+
+
+@dataclass
+class FakeOllama:
+    """An ``httpx.MockTransport`` handler that behaves like a local Ollama server.
+
+    Answers come from ``model_answers[model][record_id]``, else ``answers[record_id]``, else the
+    gold labels. An answer is a labels dict, a raw text, ``("status", code)`` or
+    ``("length", text)`` (a ``done_reason == "length"`` completion).
+    """
+
+    gold: dict[str, dict[str, Any]]
+    version: str = "0.34.4"
+    models: dict[str, dict[str, Any]] = field(default_factory=dict)
+    answers: dict[str, Any] = field(default_factory=dict)
+    model_answers: dict[str, dict[str, Any]] = field(default_factory=dict)
+    ps: dict[str, Any] | None = None
+    fail_warmup: bool = False
+    requests: list[tuple[str, str, dict[str, Any] | None]] = field(default_factory=list)
+
+    def add_model(
+        self, name: str, *, quantization: str = "Q4_K_M", digest: str = BAKEOFF_DIGEST
+    ) -> None:
+        self.models[f"{name}:latest"] = {
+            "name": f"{name}:latest",
+            "digest": digest,
+            "details": {
+                "quantization_level": quantization,
+                "family": "qwen3",
+                "parameter_size": "2B",
+            },
+        }
+
+    def generate_bodies(self) -> list[dict[str, Any]]:
+        return [body for _, path, body in self.requests if path == "/api/generate" and body]
+
+    def handler(self, request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content) if request.content else None
+        self.requests.append((request.method, request.url.path, body))
+        if request.url.path == "/api/version":
+            return httpx.Response(200, json={"version": self.version})
+        if request.url.path == "/api/tags":
+            return httpx.Response(200, json={"models": list(self.models.values())})
+        if request.url.path == "/api/ps":
+            loaded = [
+                {"name": name, "size": 1, "size_vram": 0, "context_length": 8192}
+                for name in self.models
+            ]
+            return httpx.Response(200, json=self.ps if self.ps is not None else {"models": loaded})
+        if request.url.path == "/api/generate" and body is not None:
+            return self._generate(body)
+        return httpx.Response(404, json={"error": "unknown route"})
+
+    def _generate(self, body: dict[str, Any]) -> httpx.Response:
+        prompt: str = body["prompt"]
+        if "Warm-up request" in prompt:
+            if self.fail_warmup:
+                return httpx.Response(500, json={"error": "model failed to load"})
+            return self._completion(json.dumps(next(iter(self.gold.values()))))
+        match = _RECORD_ID.search(prompt)
+        record_id = match.group(0) if match else ""
+        model = str(body["model"]).removesuffix(":latest")
+        answer = self.model_answers.get(model, {}).get(record_id, self.answers.get(record_id))
+        if answer is None:
+            answer = self.gold[record_id]
+        if isinstance(answer, tuple) and answer[0] == "status":
+            return httpx.Response(answer[1], json={"error": "scripted failure"})
+        if isinstance(answer, tuple) and answer[0] == "length":
+            return self._completion(answer[1], done_reason="length")
+        return self._completion(answer if isinstance(answer, str) else json.dumps(answer))
+
+    @staticmethod
+    def _completion(text: str, *, done_reason: str = "stop") -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "response": text,
+                "done": True,
+                "done_reason": done_reason,
+                "total_duration": 3_000_000_000,
+                "load_duration": 2_000_000,
+                "prompt_eval_count": 1400,
+                "prompt_eval_duration": 2_000_000_000,
+                "eval_count": 150,
+                "eval_duration": 1_000_000_000,
+            },
+        )
+
+
+@dataclass
+class BakeoffEnv:
+    """A throwaway repository with a verified bake-off config, prompt formats and val data."""
+
+    paths: RepoPaths
+    config_path: Path
+    val_path: Path
+    gold: dict[str, dict[str, Any]]
+    ollama: FakeOllama
+
+    @property
+    def runs_dir(self) -> Path:
+        return self.paths.root / "evals" / "runs" / "bakeoff"
+
+    def config(self) -> dict[str, Any]:
+        document: dict[str, Any] = yaml.safe_load(self.config_path.read_text(encoding="utf-8"))
+        return document
+
+    def write_config(self, document: dict[str, Any]) -> None:
+        self.config_path.write_text(yaml.safe_dump(document, sort_keys=False), encoding="utf-8")
+
+    def update_candidates(self, **changes: Any) -> None:
+        document = self.config()
+        for candidate in document["candidates"]:
+            candidate.update(changes)
+        self.write_config(document)
+
+    def run(self, *args: str) -> int:
+        return bakeoff.main(
+            ["run", "--config", str(self.config_path), *args],
+            paths=self.paths,
+            now=FIXED_NOW,
+            transport=httpx.MockTransport(self.ollama.handler),
+            sleep=lambda _: None,
+        )
+
+    def rank(self, *args: str) -> int:
+        return bakeoff.main(
+            ["rank", "--config", str(self.config_path), "--n-resamples", "50", *args],
+            paths=self.paths,
+            now=FIXED_NOW,
+        )
+
+
+@pytest.fixture
+def bakeoff_env(
+    tmp_path: Path,
+    paths: RepoPaths,
+    make_record: Callable[..., DatasetRecord],
+    make_ticket: Callable[..., TicketPayload],
+    make_labels: Callable[..., TriageLabels],
+) -> BakeoffEnv:
+    """Verified candidates small-a (1.7B), big-b (4B) and optional tiny-c; six val tickets."""
+    root = tmp_path / "repo"
+    shutil.copytree(paths.schemas_dir, root / "schemas" / "json")
+    (root / "data" / "spec").mkdir(parents=True)
+    shutil.copy(paths.spec_dir / "label_rules.v1.yaml", root / "data" / "spec")
+    prompt = load_triage_prompt()
+    document = yaml.safe_load((paths.configs_dir / "bakeoff.yaml").read_text(encoding="utf-8"))
+    candidates = []
+    for spec in BAKEOFF_CANDIDATES:
+        candidate = {
+            "role": "test",
+            "hf_revision": BAKEOFF_SHA,
+            "license": "apache-2.0",
+            "lic": 1.0,
+            "ollama_model": f"tw-bakeoff-{spec['id']}",
+            "ollama_digest": BAKEOFF_DIGEST,
+            "prompt_format": f"ml/configs/prompt_formats/{spec['id']}.json",
+            "verify_before_run": False,
+            **spec,
+        }
+        draft = PromptFormat.model_validate(
+            {
+                "base_model": spec["hf_repo"],
+                "base_revision": BAKEOFF_SHA,
+                "chat_template_sha256": "0" * 64,
+                "template_kwargs": {"add_generation_prompt": True, "enable_thinking": False},
+                "stop": ["<|im_end|>"],
+                "special_tokens": ["</think>", "<think>"],
+                "golden_prompt_version": prompt.version,
+                "golden_system": prompt.system,
+                **CHATML,
+            }
+        )
+        rendered = render_raw(draft, prompt.system, "golden user")
+        golden = GoldenRendering(
+            user="golden user", rendered_sha256=hashlib.sha256(rendered.encode()).hexdigest()
+        )
+        fmt = draft.model_copy(update={"goldens": (golden,)})
+        write_prompt_format(root / candidate["prompt_format"], fmt)
+        candidates.append(candidate)
+    document["candidates"] = candidates
+    config_path = root / "ml" / "configs" / "bakeoff.yaml"
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(yaml.safe_dump(document, sort_keys=False), encoding="utf-8")
+    gold: dict[str, dict[str, Any]] = {}
+    rows = []
+    for number, (intent, queue, action, area) in enumerate(BAKEOFF_CASES, start=1):
+        record_id = f"va_{number:05d}"
+        labels = make_labels(
+            intent=intent,
+            recommended_queue=queue,
+            recommended_action=action,
+            product_area=area,
+            entities=[],
+            priority="high",
+        )
+        ticket = make_ticket(subject=f"Case {record_id}", message=f"Case {record_id}: {intent}.")
+        record = make_record(ticket=ticket, labels=labels, record_id=record_id, split="val")
+        gold[record_id] = json.loads(labels.model_dump_json())
+        rows.append(record.model_dump_json())
+    val_path = root / "data" / "generated" / "val" / "records.jsonl"
+    val_path.parent.mkdir(parents=True)
+    val_path.write_text("".join(row + "\n" for row in rows), encoding="utf-8")
+    ollama = FakeOllama(gold=gold)
+    for spec in BAKEOFF_CANDIDATES:
+        ollama.add_model(f"tw-bakeoff-{spec['id']}")
+    return BakeoffEnv(RepoPaths(root), config_path, val_path, gold, ollama)
