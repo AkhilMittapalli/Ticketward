@@ -16,6 +16,7 @@ Exit codes: 0 success, 1 a check failed, 2 usage or configuration error.
 """
 
 import argparse
+import getpass
 import json
 import os
 import sys
@@ -27,13 +28,18 @@ from pathlib import Path
 from typing import Any, Final
 
 from tw_ml.datagen import generate as gen
-from tw_ml.datagen import hardset, leakage, manifest, qa
+from tw_ml.datagen import hardset, keys, leakage, manifest, qa
 from tw_ml.datagen.bitext import HFRowSource, build_ood, load_mapping, materialize
 from tw_ml.datagen.labelrules import load_label_rules
 from tw_ml.datagen.matrix import GENERATED_SPLITS, build_plan
 from tw_ml.datagen.paths import RepoPaths, default_paths
 from tw_ml.datagen.pools import DEFAULT_POOL_SEED, build_pools, load_denylist, write_pools
-from tw_ml.datagen.providers import OpenAICompatibleProvider, ProviderConfigError, resolve_settings
+from tw_ml.datagen.providers import (
+    OpenAICompatibleProvider,
+    ProviderConfigError,
+    load_datagen_config,
+    resolve_settings,
+)
 from tw_ml.datagen.records import DatasetRecord, TriageLabels
 from tw_ml.datagen.taxonomy import load_taxonomy
 from tw_ml.datagen.validate import check_dataset, read_lines, report_json
@@ -126,7 +132,9 @@ def cmd_generate(args: argparse.Namespace, paths: RepoPaths) -> int:
     provider: OpenAICompatibleProvider | None = None
     if not args.dry_run:
         try:
-            settings = resolve_settings(args.family, ctx.config, os.environ, host=args.host)
+            settings = resolve_settings(
+                args.family, ctx.config, os.environ, host=args.host, key_lookup=keys.load_key
+            )
         except ProviderConfigError as exc:
             sys.stderr.write(f"provider configuration: {exc}\n")
             return EXIT_USAGE
@@ -448,6 +456,39 @@ def cmd_bitext(args: argparse.Namespace, paths: RepoPaths) -> int:
     return EXIT_OK
 
 
+def cmd_keys(args: argparse.Namespace, paths: RepoPaths) -> int:
+    """Store, inspect or delete generator API keys in the OS credential store."""
+    config = load_datagen_config(paths.configs_dir / "datagen.yaml")
+    if args.keys_command == "status":
+        _write("credential store: " + ", ".join(keys.backend_names()))
+        for family, family_config in sorted(config.families.items()):
+            env_name = f"TW_DATAGEN_{family}_API_KEY"
+            override = (
+                " (overridden by the environment variable)" if os.environ.get(env_name) else ""
+            )
+            for host in sorted(family_config.hosts):
+                stored = "stored" if keys.load_key(family, host) else "not stored"
+                _write(f"  {keys.credential_name(family, host):<16} {stored}{override}")
+        return EXIT_OK
+    host = args.host or config.families[args.family].default_host
+    if host not in config.families[args.family].hosts:
+        sys.stderr.write(f"unknown host {host!r} for family {args.family}\n")
+        return EXIT_USAGE
+    name = keys.credential_name(args.family, host)
+    try:
+        if args.keys_command == "delete":
+            removed = keys.delete_key(args.family, host)
+            _write(f"removed {name}" if removed else f"nothing stored for {name}")
+            return EXIT_OK
+        secret = getpass.getpass(f"API key for {name} (input hidden, press Enter when done): ")
+        keys.store_key(args.family, host, secret)
+    except keys.KeyStoreError as exc:
+        sys.stderr.write(f"key store: {exc}\n")
+        return EXIT_USAGE
+    _write(f"stored {name} in {keys.backend_names()[0]}; the key itself is never printed")
+    return EXIT_OK
+
+
 # --------------------------------------------------------------------------- parser
 
 
@@ -470,6 +511,7 @@ def build_parser() -> argparse.ArgumentParser:
     _add_qa(sub)
     _add_manifest(sub)
     _add_hardset_bitext(sub)
+    _add_keys(sub)
     return parser
 
 
@@ -559,6 +601,16 @@ def _add_hardset_bitext(sub: Subparsers) -> None:
             cmd.add_argument("--rejects", help="evals/ood/review_decisions.v1.jsonl")
 
 
+def _add_keys(sub: Subparsers) -> None:
+    keys_parser = sub.add_parser("keys", help="generator API keys in the OS credential store")
+    keys_sub = keys_parser.add_subparsers(dest="keys_command", required=True)
+    keys_sub.add_parser("status", help="show which keys are stored (never the values)")
+    for name, help_text in (("set", "store a key (hidden prompt)"), ("delete", "remove a key")):
+        cmd = keys_sub.add_parser(name, help=help_text)
+        cmd.add_argument("--family", required=True, choices=("A", "B"))
+        cmd.add_argument("--host", help="host profile (default: the family's default host)")
+
+
 COMMANDS: Final = {
     "plan": cmd_plan,
     "pools": cmd_pools,
@@ -569,6 +621,7 @@ COMMANDS: Final = {
     "manifest": cmd_manifest,
     "hardset": cmd_hardset,
     "bitext": cmd_bitext,
+    "keys": cmd_keys,
 }
 
 

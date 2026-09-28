@@ -217,6 +217,7 @@ def resolve_settings(
     config: DatagenConfig,
     env: Mapping[str, str],
     host: str | None = None,
+    key_lookup: Callable[[str, str], str | None] | None = None,
 ) -> ProviderSettings:
     """Combine config defaults with ``TW_DATAGEN_<family>_*`` environment overrides.
 
@@ -225,6 +226,8 @@ def resolve_settings(
         config: Datagen config.
         env: Environment mapping (``os.environ`` in the CLI).
         host: Host label override (e.g. ``groq`` for the Family A fallback).
+        key_lookup: Fallback for the API key when the environment has none, called with
+            ``(family, host)``: the OS credential store in the CLI (``tw_ml.datagen.keys``).
 
     Returns:
         The resolved settings.
@@ -243,8 +246,13 @@ def resolve_settings(
         msg = f"unknown host {label!r}; set {prefix}BASE_URL and {prefix}MODEL"
         raise ProviderConfigError(msg)
     key = env.get(f"{prefix}API_KEY", "")
+    if not key.strip() and key_lookup is not None:
+        key = key_lookup(family, label) or ""
     if not key.strip():
-        msg = f"{prefix}API_KEY is not set"
+        msg = (
+            f"{prefix}API_KEY is not set and no key is stored for {family}:{label}; "
+            f"run: python -m tw_ml.datagen keys set --family {family} --host {label}"
+        )
         raise ProviderConfigError(msg)
     check_generator_safety(base_url, model, family_config)
     return ProviderSettings(

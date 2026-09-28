@@ -10,13 +10,16 @@ import json
 import os
 import random
 from collections import Counter
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+import keyring
+import keyring.backend
 import pytest
+from keyring.errors import PasswordDeleteError
 
 from tw_ml.datagen.bitext import BitextMapping, BitextRow, SourceSpec
 from tw_ml.datagen.factsheet import FactSheet
@@ -63,12 +66,42 @@ STAGE1_JSON = json.dumps(
 Responder = Callable[[ChatRequest], str]
 
 
+class MemoryKeyring(keyring.backend.KeyringBackend):
+    """In-memory credential store: tests never touch the real OS store."""
+
+    priority = 1  # keyring declares this as a classproperty; a plain value works
+
+    def __init__(self) -> None:
+        super().__init__()  # type: ignore[no-untyped-call]  # keyring is untyped here
+        self.items: dict[tuple[str, str], str] = {}
+
+    def get_password(self, service: str, username: str) -> str | None:
+        return self.items.get((service, username))
+
+    def set_password(self, service: str, username: str, password: str) -> None:
+        self.items[(service, username)] = password
+
+    def delete_password(self, service: str, username: str) -> None:
+        if self.items.pop((service, username), None) is None:
+            raise PasswordDeleteError(username)
+
+
 @pytest.fixture(autouse=True)
-def _hermetic_environment(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Strip developer TW_* variables so tests never see real keys or overrides."""
+def _hermetic_environment(monkeypatch: pytest.MonkeyPatch) -> Iterator[MemoryKeyring]:
+    """Strip developer TW_* variables and swap in an in-memory credential store.
+
+    Tests never see real keys, overrides or the developer's OS credential store.
+    """
     for key in list(os.environ):
         if key.upper().startswith("TW_"):
             monkeypatch.delenv(key)
+    original = keyring.get_keyring()
+    store = MemoryKeyring()
+    keyring.set_keyring(store)
+    try:
+        yield store
+    finally:
+        keyring.set_keyring(original)
 
 
 # --------------------------------------------------------------------------- repository specs

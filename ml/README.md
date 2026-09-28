@@ -85,6 +85,25 @@ checks that the vendor-terms snapshot is at most 30 days old (`--terms-reviewed`
 re-review), prices every call before making it, and stops at `--budget-usd` or the $15 total.
 Output goes to `data/generated/<split>/` (gitignored) and resumes where it stopped.
 
+## Generator API keys (never in files or command lines)
+
+Real generation needs a key for each generator family. Keys are kept in the operating system's
+credential store (Windows Credential Manager on Windows) through `keyring`. They never go in `.env`
+or any file inside this OneDrive-synced repository, and never on a command line where shell history
+could capture them.
+
+```bash
+uv run python -m tw_ml.datagen keys set --family A      # hidden prompt; default host: deepinfra
+uv run python -m tw_ml.datagen keys set --family B      # Mistral (test_synth)
+uv run python -m tw_ml.datagen keys status              # stored / not stored; never prints a key
+uv run python -m tw_ml.datagen keys delete --family A   # remove after rotating a key
+```
+
+A `TW_DATAGEN_<family>_API_KEY` environment variable, when set, takes precedence (for CI or a
+one-off session). Use `--host groq` for the Family A fallback host; each host has its own entry.
+Backends that would store keys unencrypted or discard them are refused, and tests always use an
+in-memory store.
+
 ## Rules
 
 - Only synthetic, public or authorized de-identified data (S-12, `data/README.md`); never Claude
