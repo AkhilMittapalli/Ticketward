@@ -86,6 +86,13 @@ audit), and the P7 frontier drafter. **Claude outputs never enter any training d
 **Budget:** $15, including a 50 + 50 pilot and regeneration. Estimates in config are dated. The binding cost is owner
 review time (R-22).
 
+**Amended 2026-09-27 (owner decision D-07): Family B is `deepseek-ai/DeepSeek-V3.2` on DeepInfra.** DeepInfra, the Family A host, does not serve Mistral Large 3. The owner chose DeepSeek-V3.2 so that one account and one key serve both families.
+
+- It is MIT-licensed, 685B parameters, and served in fp4 (recorded as `generator_quantization`).
+- It costs $0.26 / $0.38 per 1M input/output tokens, about $1.8 for test_synth.
+- It still satisfies every driver: a different family from Family A (gpt-oss) and from the base-SLM candidates (Qwen), never Claude, and outputs free to use.
+- Mistral Large 3 on Mistral La Plateforme is kept as a config-only alternative (`generator_family: mistral` stays valid for test_synth). Evidence and page hashes: the D-07 addendum in `docs/legal/generator-terms-2026-09-27.md`.
+
 ### Consequences
 
 * Good, because the training data is terms-compliant, and a single CI check guards every path by which Claude output

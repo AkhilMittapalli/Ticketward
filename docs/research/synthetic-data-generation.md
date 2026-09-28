@@ -6,11 +6,19 @@
 > specification, which is not part of this repository.
 
 **Created**: 2026-09-26
-**Last Updated**: 2026-09-26
+**Last Updated**: 2026-09-27
 **Status**: Partially resolved (vendor terms, generator choice, matrix, QA protocol and cost resolved; a 50-record pilot per generator family must confirm token counts, refusal rates and artifact rates before full generation)
 **Category**: ML Data
 **Linked ADR(s)**: ADR-0016 (test set from a different model family + hard set + Bitext OOD), amendment required; ADR-new "Generator families and vendor-terms compliance" (proposed; number assigned at merge)
 **Spec sections**: §9.1, §9.2, §9.3, §9.7 (E6), §13 S-12, §16 P1, §20 L-01/L-06, §21 R-01/R-10, §23
+
+> **Update 2026-09-27 (owner decision D-07): Family B is now `deepseek-ai/DeepSeek-V3.2` on DeepInfra**, not Mistral Large 3.
+> - Why: DeepInfra does not host Mistral Large 3, and one DeepInfra account and key now serve both generator families.
+> - The model: MIT license, 685B parameters, served in fp4, $0.26 / $0.38 per 1M input/output tokens.
+> - The rules still hold: it differs from Family A (gpt-oss) and from the base-SLM candidates (Qwen), and it is never Claude.
+> - Estimated test_synth cost: about $1.8.
+> - Mistral Large 3 on Mistral La Plateforme, the original choice analysed below, remains the documented, config-only alternative.
+> - Verification, terms and page hashes: see the addendum in the repository file `docs/legal/generator-terms-2026-09-27.md`.
 
 ---
 

@@ -46,7 +46,7 @@ decision is unchanged.
 | [0028](ADR-0028-trunk-based-conventional-commits-release-please.md) | Trunk-based development, Conventional Commits, release-please and SemVer | Accepted | 2026-09-27 | 2026-09-27 (v1.1) | — |
 | [0029](ADR-0029-taxonomy-v1.md) | Taxonomy v1: 12 intents plus `other_unclear`, 6 queues | Accepted | 2026-09-27 | 2026-09-27 (v1.1) | — |
 | [0030](ADR-0030-app-level-aes-gcm-and-crypto-shred-retention.md) | App-level AES-256-GCM for raw ticket text, with retention and purge | Accepted | 2026-09-27 | 2026-09-27 (v1.1) | — |
-| [0031](ADR-0031-training-data-generator-families-and-vendor-terms.md) | Training-data generator families and vendor-terms compliance | Accepted | 2026-09-27 | — | — |
+| [0031](ADR-0031-training-data-generator-families-and-vendor-terms.md) | Training-data generator families and vendor-terms compliance | Accepted | 2026-09-27 | 2026-09-27 (D-07: Family B = DeepSeek-V3.2 on DeepInfra) | — |
 | [0032](ADR-0032-evaluation-statistics-protocol-and-pre-registration.md) | Evaluation statistics protocol and pre-registration | Accepted | 2026-09-27 | — | — |
 | [0033](ADR-0033-citation-verifier-anchors-nli-and-claim-guards.md) | Citation verifier: lexical anchors + 3-class NLI + claim guards | Accepted | 2026-09-27 | — | — |
 | [0034](ADR-0034-prompt-guard-2-secondary-injection-signal.md) | Prompt-injection detector: Llama Prompt Guard 2 22M as a secondary, non-terminal P0 signal | Accepted | 2026-09-27 | — | — |

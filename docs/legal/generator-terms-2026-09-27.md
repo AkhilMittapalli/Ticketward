@@ -257,6 +257,31 @@ tool), by grepping for the exact clause. Quotes are verbatim, ≤ 15 words, one 
 
 ---
 
+## Addendum 2026-09-27 (owner decision D-07): Family B = DeepSeek-V3.2 on DeepInfra
+
+DeepInfra does not host Mistral Large 3 (its Mistral catalog ends at Mistral Small 3.2 24B). The owner therefore chose `deepseek-ai/DeepSeek-V3.2` on DeepInfra for the test set, so one DeepInfra account and key serve both families. The Mistral La Plateforme section above stays as the documented, config-only alternative.
+
+| Item | Finding (accessed 2026-09-27) |
+|---|---|
+| Model and license | `deepseek-ai/DeepSeek-V3.2`, 685B parameters. The repository `LICENSE` file is the **MIT License**, which places no restriction on using outputs, commercially or otherwise, and requires no attribution for outputs. |
+| Host | DeepInfra: the same account, key, terms and defaults as Family A above (no training on customer data; zero retention by default). OpenAI-compatible base URL `https://api.deepinfra.com/v1/openai`, model id `deepseek-ai/DeepSeek-V3.2`. |
+| Price (rendered on the model page) | **$0.26** / 1M input, **$0.38** / 1M output, **$0.13** / 1M cached input |
+| Serving precision | **fp4**, as shown on the model page; recorded per record as `generator_quantization` |
+| Context / JSON | 163,840 tokens; JSON `response_format` supported (per the model page) |
+| Family independence | Differs from Family A (OpenAI gpt-oss) and from the base-SLM candidates (Qwen), so the train/test generator split and the no-home-field rule hold. It is never Claude. |
+| Verdict | **Allowed** for "use outputs as test data for evaluating an open-source-licensed small model" (and training would also be allowed under MIT; test outputs are never used for training here). |
+| Estimated cost | about $1.8 for test_synth at the rendered prices (the `generate --dry-run` estimate is authoritative) |
+
+Hashes (raw fetched bytes, same method as above):
+
+| Page | SHA-256 | Bytes |
+|---|---|---|
+| https://deepinfra.com/deepseek-ai/DeepSeek-V3.2 | `39d16581f1649baf84cdb66f4320e1166b9ba73b7d03215b0145d5cd301495cf` | 483,231 |
+| https://huggingface.co/deepseek-ai/DeepSeek-V3.2 | `83ff576ab05b7ddc2aed4686e1773f6256e9a789053773e30456f5e0fe884af0` | 431,105 |
+| https://huggingface.co/deepseek-ai/DeepSeek-V3.2/raw/main/LICENSE | `f2c6c602815669d292889e5be8c802f2ed950653b77999b1584e8e6aed25d040` | 1,084 |
+
+The model-page hashes fingerprint dynamic HTML, so they are expected to change often; the LICENSE hash is the stable one to re-check before each run.
+
 ## Pricing summary (all dated 2026-09-27)
 
 | Host | Input $/1M | Output $/1M | Notes |
