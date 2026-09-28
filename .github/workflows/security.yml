@@ -39,12 +39,18 @@ jobs:
             "$GITLEAKS_IMAGE" git --redact --no-banner --exit-code 1 /repo
 
   pip-audit:
-    name: deps / pip-audit (backend lock)
+    # Both uv projects: the backend lock and the ml lock (datagen, eval and, from P3, the
+    # `train` extra; torch comes from the training platform and is never in the lock).
+    name: deps / pip-audit (${{ matrix.project }} lock)
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [backend, ml]
     defaults:
       run:
-        working-directory: backend
+        working-directory: ${{ matrix.project }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -52,10 +58,10 @@ jobs:
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           version: ${{ env.UV_VERSION }}
-          working-directory: backend
-      - name: Audit the locked dependency set (runtime + dev)
+          working-directory: ${{ matrix.project }}
+      - name: Audit the locked dependency set (runtime + dev + all extras)
         run: |
-          uv export --frozen --no-emit-project --format requirements-txt -o "$RUNNER_TEMP/requirements.txt"
+          uv export --frozen --no-emit-project --all-extras --format requirements-txt -o "$RUNNER_TEMP/requirements.txt"
           uvx pip-audit==2.10.1 --requirement "$RUNNER_TEMP/requirements.txt" --require-hashes --disable-pip --strict
 
   bandit:
