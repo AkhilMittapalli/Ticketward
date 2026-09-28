@@ -25,13 +25,13 @@ intent is the primary need, the one to resolve first. Each intent with its defin
 - security_report: suspected unauthorized access, a vulnerability, phishing or leaked credentials; security_and_privacy; escalate_to_security
 - privacy_legal_request: a GDPR or CCPA data request, a DPA, a subpoena, or a legal threat; security_and_privacy; escalate_to_privacy_legal
 - other_unclear: out of scope, spam, or too little information to tell; general_support_tier_1; request_more_information
-Other actions: offer_human_contact, escalate_to_engineering, link_to_active_incident, route_to_tier_2, close_as_duplicate_ticket, no_action_spam.
+Other actions: offer_human_contact and no_action_spam (see the rules). escalate_to_engineering, link_to_active_incident, route_to_tier_2 and close_as_duplicate_ticket are set later by the policy engine or a support agent; never output them.
 
 Rules:
 - A critical intent is the primary when the ticket also has another need: security_report, service_outage, cancellation_request, billing_duplicate_charge, billing_payment_failure.
 - secondary_intents: at most 2 further needs; never the primary, never other_unclear, no repeats.
 - recommended_queue: normally the primary intent's default queue.
-- recommended_action: offer_human_contact if the customer asks for a person, directly or indirectly; otherwise request_more_information if the details for the first step are missing, except that billing_duplicate_charge, billing_payment_failure, refund_request, cancellation_request, service_outage, security_report, privacy_legal_request and sso_login_failure keep their default; otherwise the intent's default action.
+- recommended_action: offer_human_contact if the customer asks for a person, directly or indirectly; otherwise no_action_spam for spam; otherwise request_more_information if the details for the first step are missing, except that billing_duplicate_charge, billing_payment_failure, refund_request, cancellation_request, service_outage, security_report, privacy_legal_request and sso_login_failure keep their default; otherwise the intent's default action.
 - priority, as the ticket implies it: urgent = org-wide blocker, security incident, outage or data loss; high = blocks a team or workflow, payment failure with suspension risk; normal = single-user issue with a workaround, billing question; low = how-to, feature request, cosmetic.
 - sentiment of the latest customer message: positive, neutral, confused, frustrated, angry.
 - churn_risk: high only for an explicit intent to cancel, not renew or downgrade to free, a named competitor they are moving to, or an ultimatum; medium for vague talk of other tools, 3 or more contacts in 30 days, or a frustrated or angry business or enterprise customer; low otherwise. churn_signals: up to 5 short cues from the ticket.
