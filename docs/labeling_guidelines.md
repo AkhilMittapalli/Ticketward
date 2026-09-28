@@ -10,11 +10,12 @@ The labels are the `TriageModelOutput` contract (`schemas/json/triage_model_outp
 The rule-checker `python -m tw_ml.datagen validate` enforces the mechanical parts (R2-R10 in
 spec §9.1 step 6); the judgement calls are yours.
 
-> **Every example string in this document is protected.** They are listed in
+> **Every ticket example in this document is protected.** They are listed in
 > `data/spec/protected_strings.txt`, and leakage check C6 rejects any train/val record (and
 > flags any test record for replacement) that copies one. Never paste them into a ticket, a
 > prompt or the hard set. Names appear only as placeholders such as `<PERSON_1>`; every company,
-> product and identifier is fictional.
+> product and identifier is fictional. The citation-verifier examples at the end are reply
+> sentences checked against knowledge-base chunks, not tickets, so C6 does not cover them.
 
 ## Contents
 
@@ -22,6 +23,7 @@ spec §9.1 step 6); the judgement calls are yours.
 2. [Rules R1-R14](#rules), each with 3 positive and 3 negative examples
 3. [Spec §5.1 edge cases](#edge-cases-spec-51)
 4. [Field reference](#field-reference)
+5. [Citation-verifier labels](#citation-verifier-labels-p6), for the P6 calibration set and the M-06 audit
 
 ## Decision tree
 
@@ -347,3 +349,76 @@ injection.
 | `customer_requested_human` | R9 | boolean |
 | `information_sufficient` | R10 | boolean |
 | `rationale` | - | one or two sentences, at most 400 characters, no chain-of-thought |
+
+## Citation-verifier labels (P6)
+
+These labels grade one draft sentence against the knowledge-base chunk(s) it cites. They are used
+for the P6 calibration set of about 300 (sentence, cited chunk) pairs, which sets the NLI
+thresholds `τ_entail` and `τ_contra` (spec §8, A-15), and the same definitions apply to the M-06
+human audit. Two annotators label a 60-pair overlap; report Cohen's κ and adjudicate every
+disagreement with a note.
+
+| Label | Meaning |
+|---|---|
+| `supported` | Every claim in the sentence is stated in, or directly follows from, the cited chunk(s) |
+| `partially_supported` | Some claims are supported and the rest are simply absent from the chunk; nothing is contradicted |
+| `unsupported` | No claim is supported by the cited chunk, and nothing in it contradicts the sentence |
+| `contradicted` | At least one claim is incompatible with the chunk (different amount, code, path, status or condition). This label wins over the others |
+
+**How to decide**
+
+1. Judge only against the chunk(s) the sentence cites. Other KB documents, the fact sheet and
+   your own knowledge do not count: a true sentence that its chunk does not state is
+   `unsupported`. With several citations, judge against their union.
+2. Split the sentence into claims: facts, numbers, error codes, plan names, UI paths, steps,
+   conditions and statuses. Then apply the table.
+3. Paraphrase is fine; the meaning must match. Amounts, percentages, error codes and UI paths
+   must match exactly after formatting ("$1,200" = "$1200"). A correct paraphrase of a number
+   ("two weeks" for "14 days") is `supported` even when the verifier's anchor check (L1) misses
+   it; that miss is a verifier error to measure, not a reason to change the label.
+4. A weaker, hedged restatement of a stated claim is `supported` ("some exports may be delayed"
+   when the chunk says they are delayed).
+5. Status words are claims: "resolved", "investigating" and "monitoring" must equal the status
+   in the chunk.
+6. Sentences with no checkable claim (empathy, holding lines, questions) do not belong in the
+   calibration set: replace the pair.
+7. Support is not permission. A `supported` sentence can still be stripped or replaced by a claim
+   guard (refund eligibility and account status are never allowed, S-04 and S-06). Label support
+   only.
+8. `partially_supported` counts as not passing when `τ_entail` is calibrated (precision of "passes
+   the verifier" ≥ 0.95). The stored `draft_citations.verdict` keeps only `supported`,
+   `unsupported` and `contradicted`.
+
+**Examples.** The chunks are illustrative, not KB text; the KB (`data/kb/`) is the source of
+truth.
+
+Chunk A (`policy_pricing_and_plans`): "The Business plan costs $16 per seat per month and allows up
+to 500 seats. SAML single sign-on is included on Business and Enterprise."
+
+| Sentence | Label | Why |
+|---|---|---|
+| Business costs $16 per seat per month. | `supported` | stated |
+| Business includes SAML single sign-on and SCIM provisioning. | `partially_supported` | SSO is stated; SCIM is absent from this chunk |
+| Business costs $18 per seat per month. | `contradicted` | the chunk says $16 |
+| Business comes with a 99.95% uptime SLA. | `unsupported` | the chunk says nothing about uptime |
+
+Chunk B (`known_incident`, example only): "Status: monitoring. Since 09:40 UTC some CSV exports
+are delayed by up to 30 minutes. A fix was deployed at 11:05 UTC and the team is monitoring
+recovery."
+
+| Sentence | Label | Why |
+|---|---|---|
+| A fix was deployed at 11:05 UTC and we are monitoring the export delays. | `supported` | both claims stated |
+| Some exports may be delayed while we recover. | `supported` | hedged restatement (rule 4) |
+| The export delay has been resolved. | `contradicted` | the status is monitoring (rule 5) |
+
+Chunk C (`help_article`): "If sign-in fails with SAML_ERR_408 (SAML assertion expired), check that
+your identity provider's clock is in sync, then retry from Settings → Security → Single sign-on →
+Test connection."
+
+| Sentence | Label | Why |
+|---|---|---|
+| SAML_ERR_408 means the SAML assertion expired, so check your identity provider's clock. | `supported` | code, meaning and step stated |
+| Check your identity provider's clock and that the user is assigned to the Taskmoor app. | `partially_supported` | the clock step is stated; user assignment is absent |
+| Retry from Settings → Integrations → SSO. | `contradicted` | the chunk gives a different path |
+| You may also need to re-upload your IdP certificate. | `unsupported` | not in the chunk |
