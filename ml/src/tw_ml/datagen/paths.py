@@ -102,6 +102,11 @@ class RepoPaths:
         return self.root / "evals" / "hard_set.v1.jsonl"
 
     @property
+    def hard_dev_gold_file(self) -> Path:
+        """Open ``hard_dev`` gold rows, written when the split is frozen (spec §9.12 D6-7)."""
+        return self.root / "evals" / "hard_dev.v1.jsonl"
+
+    @property
     def ood_dir(self) -> Path:
         """Bitext OOD pointers and owner review decisions."""
         return self.root / "evals" / "ood"

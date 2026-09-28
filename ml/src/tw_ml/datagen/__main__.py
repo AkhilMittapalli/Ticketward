@@ -396,6 +396,10 @@ def cmd_hardset(args: argparse.Namespace, paths: RepoPaths) -> int:
             subset_seeds={"hard_dev": args.seed, "hard_final": args.seed},
         )
         manifest.write_manifest(manifest.manifest_path(paths.manifests_dir, "test_hard"), built)
+        gold = paths.hard_dev_gold_file
+        gold.parent.mkdir(parents=True, exist_ok=True)
+        lines = hardset.dev_gold_lines(report.items, dev)
+        gold.write_text("".join(f"{line}\n" for line in lines), encoding="utf-8", newline="\n")
     return EXIT_OK
 
 
@@ -589,7 +593,11 @@ def _add_hardset_bitext(sub: Subparsers) -> None:
     hard_split = hard_sub.add_parser("split")
     hard_split.add_argument("--file")
     hard_split.add_argument("--seed", type=int, default=hardset.HARD_SPLIT_SEED)
-    hard_split.add_argument("--write-manifest", action="store_true")
+    hard_split.add_argument(
+        "--write-manifest",
+        action="store_true",
+        help="freeze the split: data/manifests/test_hard.json + the open evals/hard_dev.v1.jsonl",
+    )
     bitext = sub.add_parser("bitext", help="Bitext OOD pointers (downloads; owner-run only)")
     bitext_sub = bitext.add_subparsers(dest="bitext_command", required=True)
     for name in ("build", "materialize"):

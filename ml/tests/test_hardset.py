@@ -13,11 +13,13 @@ from typing import Any
 
 import pytest
 
+from tw_ml.baselines.rules import read_tickets
 from tw_ml.datagen.hardset import (
     TEMPLATE_ID,
     HardSetItem,
     Quotas,
     check_quotas,
+    dev_gold_lines,
     split_hard_set,
     split_summary,
     to_record,
@@ -29,6 +31,7 @@ from tw_ml.datagen.paths import RepoPaths
 from tw_ml.datagen.records import TicketPayload, TriageLabels
 from tw_ml.datagen.taxonomy import Taxonomy
 from tw_ml.datagen.validate import ValidationContext
+from tw_ml.eval.data import load_gold
 
 
 def _lines(cases: list[dict[str, Any]]) -> list[str]:
@@ -199,6 +202,36 @@ def test_split_is_deterministic_stratified_and_order_independent(
     assert summary["hard_dev"]["critical"] + summary["hard_final"]["critical"] == sum(
         rules.is_critical(i.labels.intent) for i in items
     )
+
+
+def test_dev_gold_file_holds_only_hard_dev_and_loads_in_the_harness(
+    cases: list[dict[str, Any]], tmp_path: Path
+) -> None:
+    items = [HardSetItem.model_validate(c) for c in cases]
+    dev, final = split_hard_set(items)
+    lines = dev_gold_lines(list(reversed(items)), list(reversed(dev)))
+    assert lines == dev_gold_lines(items, dev)  # independent of input order
+    ids = [json.loads(line)["record_id"] for line in lines]
+    assert ids == dev
+    assert not set(ids) & set(final)
+    gold_file = tmp_path / "hard_dev.v1.jsonl"
+    gold_file.write_text("".join(f"{line}\n" for line in lines), encoding="utf-8")
+    gold = load_gold(gold_file)
+    by_id = {i.record_id: i for i in items}
+    assert [g.record_id for g in gold] == dev
+    for item in gold:
+        source = by_id[item.record_id]
+        assert item.labels == source.labels
+        assert item.human_request_kind == source.strata.human_request  # M-07d needs the kind
+        assert item.needs_info == source.strata.needs_info
+        assert item.legal_threat == source.strata.legal_threat_in_billing
+    assert [record_id for record_id, _, _ in read_tickets(gold_file)] == dev
+
+
+def test_dev_gold_lines_refuse_unknown_ids(cases: list[dict[str, Any]]) -> None:
+    items = [HardSetItem.model_validate(c) for c in cases[:5]]
+    with pytest.raises(ValueError, match="th_999"):
+        dev_gold_lines(items, ["th_999"])
 
 
 def test_to_record_carries_the_attestation(cases: list[dict[str, Any]], taxonomy: Taxonomy) -> None:

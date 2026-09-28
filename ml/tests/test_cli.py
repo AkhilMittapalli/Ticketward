@@ -28,6 +28,10 @@ class SandboxPaths(RepoPaths):
     def manifests_dir(self) -> Path:
         return self.sandbox / "manifests"
 
+    @property
+    def hard_dev_gold_file(self) -> Path:
+        return self.sandbox / "hard_dev.v1.jsonl"
+
 
 def _out(capsys: pytest.CaptureFixture[str]) -> str:
     return capsys.readouterr().out
@@ -461,6 +465,11 @@ def test_hardset_validate_and_split(
     written = json.loads((tmp_path / "manifests" / "test_hard.json").read_text(encoding="utf-8"))
     assert written["subsets"]["hard_dev"] == printed["hard_dev"]
     assert (written["records"], written["generator_families"]) == (100, {"human": 100})
+    gold_rows = (tmp_path / "hard_dev.v1.jsonl").read_text(encoding="utf-8").splitlines()
+    assert [json.loads(row)["record_id"] for row in gold_rows] == printed["hard_dev"]
+    assert not {json.loads(row)["record_id"] for row in gold_rows} & set(
+        written["subsets"]["hard_final"]
+    )
     incomplete = write_jsonl(tmp_path / "short.jsonl", hard_cases[:90])
     assert main(["hardset", "split", "--file", str(incomplete)], paths) == EXIT_FAILED
     assert _json_head(_out(capsys))["quota_shortfalls"]

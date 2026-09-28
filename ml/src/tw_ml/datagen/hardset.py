@@ -363,6 +363,32 @@ def split_summary(
     return parts
 
 
+def dev_gold_lines(items: Sequence[HardSetItem], dev_ids: Sequence[str]) -> list[str]:
+    """Rows of the open ``hard_dev`` gold file (spec v1.1 §9.12 D6-7).
+
+    Each line is one owner-written case: the labels plus the strata the eval harness reads
+    (``human_request`` kind, ``needs_info``, ``legal_threat_in_billing``). Lines are sorted by
+    record id, so the file depends only on the cases and the split. ``hard_final`` cases never
+    leave the source file; the sealed manifest names them.
+
+    Args:
+        items: Valid cases.
+        dev_ids: ``hard_dev`` ids from :func:`split_hard_set`.
+
+    Returns:
+        JSONL lines, without trailing newlines.
+
+    Raises:
+        ValueError: If a ``hard_dev`` id is not among the cases.
+    """
+    by_id = {item.record_id: item for item in items}
+    missing = sorted(set(dev_ids) - by_id.keys())
+    if missing:
+        msg = f"hard_dev ids missing from the hard set: {', '.join(missing)}"
+        raise ValueError(msg)
+    return [by_id[record_id].model_dump_json() for record_id in sorted(set(dev_ids))]
+
+
 def written_after(items: Sequence[HardSetItem], moment: datetime) -> list[str]:
     """Cases whose attestation date is after a moment (e.g. the first generation run).
 
