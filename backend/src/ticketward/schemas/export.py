@@ -1,8 +1,10 @@
 """JSON Schema (draft 2020-12) export of the data contracts (spec §5, §6).
 
 The exported files in ``schemas/json/`` are the single source for JSON Schema
-consumers (Ollama ``format`` constrained decoding, TypeScript codegen). Property
-order follows model field order on purpose: it is the order the SLM emits keys in.
+consumers (TypeScript codegen, the ml package). Property order follows model field
+order on purpose: it is the order the SLM emits keys in. Constrained decoding does
+not use these files directly: it uses the derived ``*.decoding.json`` schemas
+(``ticketward.ml.decoding_schema``: references inlined, every key required).
 """
 
 import json

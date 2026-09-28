@@ -1,5 +1,9 @@
 """Export JSON Schemas (``schemas/json/``) and OpenAPI (``docs/openapi.json``).
 
+``schemas/json/<stem>.schema.json`` are the contract schemas; ``<stem>.decoding.json`` are the
+grammar-safe decoding schemas derived from them (``ticketward.ml.decoding_schema``, spec §6),
+sent as the Ollama ``format``. ``--check`` covers every file.
+
 Usage (from the repository root)::
 
     make export-schemas   # write files
@@ -17,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 from ticketward.core.config import Environment, Settings
+from ticketward.ml.decoding_schema import build_decoding_schemas
 from ticketward.schemas.export import build_json_schemas, render_json
 
 
@@ -46,6 +51,10 @@ def contract_files(repo_root: Path) -> dict[Path, str]:
         schema_dir / f"{name}.schema.json": render_json(schema)
         for name, schema in build_json_schemas().items()
     }
+    files.update(
+        (schema_dir / f"{name}.decoding.json", render_json(schema))
+        for name, schema in build_decoding_schemas().items()
+    )
     files[repo_root / "docs" / "openapi.json"] = render_json(build_openapi())
     return files
 

@@ -6,13 +6,16 @@ from typing import Any
 
 import pytest
 
+from ticketward.ml.decoding_schema import decoding_schema
 from ticketward.schemas.export import JSON_SCHEMA_DIALECT, build_json_schemas, render_json
 from ticketward.schemas.triage import TriageModelOutput
 from ticketward.tools.export_contracts import build_openapi, main, sync_contract_files
 
+DECODING_FILE = "schemas/json/triage_model_output.decoding.json"
 EXPECTED_FILES = {
     "schemas/json/ticket_create.schema.json",
     "schemas/json/triage_model_output.schema.json",
+    DECODING_FILE,
     "schemas/json/triage_result.schema.json",
     "schemas/json/problem_detail.schema.json",
     "schemas/json/taxonomy.schema.json",
@@ -23,6 +26,13 @@ EXPECTED_FILES = {
 def test_committed_contracts_are_up_to_date(repo_root: Path) -> None:
     stale = sync_contract_files(repo_root, check=True)
     assert stale == [], "run `uv run python ../scripts/export_schemas.py` and commit the result"
+
+
+def test_committed_decoding_schema_is_the_derived_schema(repo_root: Path) -> None:
+    # The Ollama `format` payload is this file, byte for byte (spec §6, constrained-decoding SI-1).
+    committed = (repo_root / DECODING_FILE).read_text(encoding="utf-8")
+    assert committed == render_json(decoding_schema(TriageModelOutput))
+    assert json.loads(committed)["required"] == list(TriageModelOutput.model_fields)
 
 
 def test_export_is_deterministic() -> None:
@@ -129,8 +139,13 @@ def test_cli_writes_then_checks(tmp_path: Path, capsys: pytest.CaptureFixture[st
     )
 
 
-def test_cli_detects_drift(tmp_path: Path) -> None:
+@pytest.mark.parametrize("relative", ["schemas/json/ticket_create.schema.json", DECODING_FILE])
+def test_cli_detects_drift(
+    tmp_path: Path, relative: str, capsys: pytest.CaptureFixture[str]
+) -> None:
     assert main(["--repo-root", str(tmp_path)]) == 0
-    target = tmp_path / "schemas/json/ticket_create.schema.json"
+    target = tmp_path / relative
     target.write_text("{}\n", encoding="utf-8")
+    capsys.readouterr()
     assert main(["--repo-root", str(tmp_path), "--check"]) == 1
+    assert relative in capsys.readouterr().err

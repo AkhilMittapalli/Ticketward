@@ -1,0 +1,200 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "intent": {
+      "enum": [
+        "sso_login_failure",
+        "account_access_issue",
+        "billing_duplicate_charge",
+        "billing_payment_failure",
+        "refund_request",
+        "cancellation_request",
+        "plan_pricing_inquiry",
+        "service_outage",
+        "bug_report",
+        "how_to_question",
+        "security_report",
+        "privacy_legal_request",
+        "other_unclear"
+      ],
+      "type": "string"
+    },
+    "secondary_intents": {
+      "items": {
+        "enum": [
+          "sso_login_failure",
+          "account_access_issue",
+          "billing_duplicate_charge",
+          "billing_payment_failure",
+          "refund_request",
+          "cancellation_request",
+          "plan_pricing_inquiry",
+          "service_outage",
+          "bug_report",
+          "how_to_question",
+          "security_report",
+          "privacy_legal_request",
+          "other_unclear"
+        ],
+        "type": "string"
+      },
+      "maxItems": 2,
+      "type": "array"
+    },
+    "priority": {
+      "enum": [
+        "urgent",
+        "high",
+        "normal",
+        "low"
+      ],
+      "type": "string"
+    },
+    "sentiment": {
+      "enum": [
+        "positive",
+        "neutral",
+        "confused",
+        "frustrated",
+        "angry"
+      ],
+      "type": "string"
+    },
+    "churn_risk": {
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "type": "string"
+    },
+    "churn_signals": {
+      "items": {
+        "maxLength": 200,
+        "type": "string"
+      },
+      "maxItems": 5,
+      "type": "array"
+    },
+    "product_area": {
+      "enum": [
+        "projects_tasks",
+        "boards_timelines",
+        "sso_identity",
+        "user_admin_permissions",
+        "billing_subscriptions",
+        "integrations_api",
+        "notifications_email",
+        "mobile_apps",
+        "reporting_analytics",
+        "automations",
+        "data_import_export",
+        "platform_availability"
+      ],
+      "type": "string"
+    },
+    "entities": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "enum": [
+              "error_code",
+              "http_status",
+              "saml_idp",
+              "invoice_id",
+              "charge_amount",
+              "currency",
+              "charge_date",
+              "workspace_id",
+              "account_id",
+              "user_count_affected",
+              "browser",
+              "os",
+              "app_version",
+              "integration_name",
+              "api_endpoint",
+              "feature_name",
+              "region",
+              "timestamp",
+              "competitor_name",
+              "legal_reference",
+              "steps_already_tried"
+            ],
+            "type": "string"
+          },
+          "value": {
+            "maxLength": 200,
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "value"
+        ],
+        "type": "object"
+      },
+      "maxItems": 20,
+      "type": "array"
+    },
+    "recommended_queue": {
+      "enum": [
+        "general_support_tier_1",
+        "technical_support_tier_2",
+        "billing_and_accounts",
+        "customer_success_retention",
+        "security_and_privacy",
+        "incident_response"
+      ],
+      "type": "string"
+    },
+    "recommended_action": {
+      "enum": [
+        "answer_with_kb_article",
+        "request_more_information",
+        "request_saml_error_details_and_check_known_incident",
+        "check_known_incident_and_share_status",
+        "collect_repro_steps_and_escalate_to_engineering",
+        "escalate_to_engineering",
+        "escalate_to_billing_for_review",
+        "escalate_to_csm_retention",
+        "escalate_to_security",
+        "escalate_to_privacy_legal",
+        "offer_human_contact",
+        "send_password_reset_guidance",
+        "share_pricing_page_reference",
+        "link_to_active_incident",
+        "route_to_tier_2",
+        "close_as_duplicate_ticket",
+        "no_action_spam"
+      ],
+      "type": "string"
+    },
+    "customer_requested_human": {
+      "type": "boolean"
+    },
+    "information_sufficient": {
+      "type": "boolean"
+    },
+    "rationale": {
+      "maxLength": 400,
+      "type": "string"
+    }
+  },
+  "required": [
+    "intent",
+    "secondary_intents",
+    "priority",
+    "sentiment",
+    "churn_risk",
+    "churn_signals",
+    "product_area",
+    "entities",
+    "recommended_queue",
+    "recommended_action",
+    "customer_requested_human",
+    "information_sufficient",
+    "rationale"
+  ],
+  "type": "object"
+}
