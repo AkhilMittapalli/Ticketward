@@ -427,10 +427,10 @@ def test_check_dataset_gates(
         ticket=make_ticket(message="Okta fails with SAML_ERR_302 now."),
         record_id="tr_00004",
     )
-    mistral = json.loads(first.model_dump_json())
-    mistral["provenance"]["generator_family"] = "mistral"
+    test_generator = json.loads(first.model_dump_json())  # Family B's model in train (D-07)
+    test_generator["provenance"]["generator_family"] = "deepseek"
     lines = [r.model_dump_json() for r in (first, duplicate, greeting, broken)] + [
-        json.dumps(mistral),
+        json.dumps(test_generator),
         "not json",
         "",
     ]

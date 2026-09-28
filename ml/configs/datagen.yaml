@@ -1,7 +1,11 @@
-# Datagen provider settings (tw_ml.datagen.providers). Spec v1.1 §9.1 (A-01); hosts, model ids and
-# prices verified in docs/legal/generator-terms-2026-09-27.md (accessed 2026-09-27).
-# Environment variables override the host defaults: TW_DATAGEN_{A,B}_HOST, _BASE_URL, _MODEL, and
-# the key TW_DATAGEN_{A,B}_API_KEY (required for a real run; never stored in any file).
+# Datagen provider settings (tw_ml.datagen.providers). Spec v1.1 §9.1 (A-01) and owner decision
+# D-07 (2026-09-27); hosts, model ids and prices verified in docs/legal/generator-terms-2026-09-27.md
+# and on the vendor pages (accessed 2026-09-27).
+# Environment variables override the host defaults: TW_DATAGEN_{A,B}_HOST, _BASE_URL, _MODEL. The
+# key comes from TW_DATAGEN_{A,B}_API_KEY or the OS credential store (`python -m tw_ml.datagen keys
+# set`); it is never stored in any file. Host fields: base_url, api_model_id, seed_param (default
+# `seed`), quantization (optional; recorded in provenance). An overridden base URL is treated as an
+# unknown host (OpenAI seed name, no quantization recorded).
 version: datagen.v1
 
 # Every generated record points at the terms snapshot that applied when it was created
@@ -26,7 +30,7 @@ families:
   A: # train/val: openai/gpt-oss-120b (Apache-2.0), prompt family P-A
     generator_family: openai_gpt_oss
     open_weights_model: openai/gpt-oss-120b
-    allowed_model_patterns: [gpt-oss-120b]
+    allowed_model_patterns: [gpt-oss-120b] # exact model name, never shared with Family B
     default_host: deepinfra # primary: cheapest confirmed host
     hosts:
       deepinfra:
@@ -43,26 +47,39 @@ families:
         top_p: 1.0
         max_tokens: 2000
         response_format: json_object
-        seed_param: seed
         extra: {reasoning_effort: low}
-  B: # test_synth: Mistral Large 3 (Apache-2.0), prompt family P-B (two stages); never Claude
-    generator_family: mistral
-    open_weights_model: mistralai/Mistral-Large-3-675B-Instruct-2512
-    allowed_model_patterns: [mistral-large]
-    default_host: mistral
+  # test_synth: DeepSeek-V3.2 (MIT), prompt family P-B (two stages); never Claude.
+  # D-07 (2026-09-27): replaces Mistral Large 3 on Mistral La Plateforme; DeepInfra does not host
+  # Mistral Large 3. One DeepInfra account and key serve both families (keys: B:deepinfra falls
+  # back to A:deepinfra). Model patterns are exact names (tw_ml.datagen.providers.model_allowed).
+  #
+  # Documented alternative, config-only (not active): Mistral La Plateforme. To switch, set
+  #   generator_family: mistral
+  #   open_weights_model: mistralai/Mistral-Large-3-675B-Instruct-2512
+  #   allowed_model_patterns: [mistral-large-3-25-12, Mistral-Large-3-675B-Instruct-2512]
+  #   default_host: mistral
+  #   hosts: {mistral: {base_url: https://api.mistral.ai/v1, api_model_id: mistral-large-3-25-12,
+  #                     seed_param: random_seed}}
+  # and set splits.test_synth.generator_family: mistral in data/spec/generation_matrix.yaml
+  # (its price row is kept in datagen_prices.v1.yaml).
+  B:
+    generator_family: deepseek
+    open_weights_model: deepseek-ai/DeepSeek-V3.2
+    allowed_model_patterns: [DeepSeek-V3.2]
+    default_host: deepinfra
     hosts:
-      mistral:
-        base_url: https://api.mistral.ai/v1
-        api_model_id: mistral-large-3-25-12
+      deepinfra:
+        base_url: https://api.deepinfra.com/v1/openai
+        api_model_id: deepseek-ai/DeepSeek-V3.2
+        seed_param: seed # OpenAI name (Mistral La Plateforme would need random_seed)
+        quantization: fp4 # DeepInfra serves this model in fp4 -> provenance.generator_quantization
     requests:
-      # ERPROT D1 initial values: stage 1 ~0.5, stage 2 ~0.8; tune in the pilot.
+      # ERPROT D1 initial values: stage 1 ~0.5, stage 2 ~0.8; tune in the pilot (P1.30).
       stage1:
         temperature: 0.5
         max_tokens: 900
         response_format: json_object
-        seed_param: random_seed
       stage2:
         temperature: 0.8
         max_tokens: 1400
         response_format: json_object
-        seed_param: random_seed

@@ -309,9 +309,10 @@ def fake_provider() -> Callable[..., FakeProvider]:
             )
         return FakeProvider(
             responder,
-            host="mistral",
-            api_model_id="mistral-large-3-25-12",
-            open_weights_model="mistralai/Mistral-Large-3-675B-Instruct-2512",
+            host="deepinfra",
+            api_model_id="deepseek-ai/DeepSeek-V3.2",
+            open_weights_model="deepseek-ai/DeepSeek-V3.2",
+            quantization="fp4",
         )
 
     return build

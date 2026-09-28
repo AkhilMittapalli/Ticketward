@@ -467,7 +467,7 @@ def cmd_keys(args: argparse.Namespace, paths: RepoPaths) -> int:
                 " (overridden by the environment variable)" if os.environ.get(env_name) else ""
             )
             for host in sorted(family_config.hosts):
-                stored = "stored" if keys.load_key(family, host) else "not stored"
+                stored = keys.key_status(family, host)
                 _write(f"  {keys.credential_name(family, host):<16} {stored}{override}")
         return EXIT_OK
     host = args.host or config.families[args.family].default_host

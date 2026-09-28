@@ -7,7 +7,7 @@ and every company, person, account and ticket are fictional ("Taskmoor is fictio
 affiliated with any real company").
 
 **No Claude/Anthropic output enters any dataset** (A-01): train/val come from
-`openai/gpt-oss-120b` (Family A), test_synth from Mistral Large 3 (Family B), the hard set from the
+`openai/gpt-oss-120b` (Family A), test_synth from DeepSeek-V3.2 on DeepInfra (Family B, owner decision D-07), the hard set from the
 owner's hand (no LLM assistance), and the OOD set from the public Bitext datasets. The code refuses
 Anthropic endpoints and models, and every record's provenance is checked (T-DATA-provenance).
 
@@ -37,9 +37,9 @@ Every record (`tw_ml.datagen.records.Provenance`, spec §9.1 step 8 + v1.1) carr
 |---|---|
 | `record_id` | stable id with a split prefix (`tr_00042`, `ts_00007`, `th_001`, `to_0001`); it never encodes a label |
 | `split` | `train`, `val`, `test_synth`, `test_hard`, `test_ood`, `e2e_scenarios` |
-| `generator_family` | `openai_gpt_oss` (train/val), `mistral` (test_synth), `human` (hard set, v0.2 additions), `public_bitext` (test_ood) |
-| `generator_model` / `api_model_id` | the open-weights model id and the host's API id (e.g. `mistralai/Mistral-Large-3-675B-Instruct-2512` / `mistral-large-3-25-12`) |
-| `provider`, `generator_endpoint` | host label (`deepinfra`, `groq`, `mistral`, `owner`, `huggingface`) and `host|model|request date` |
+| `generator_family` | `openai_gpt_oss` (train/val), `deepseek` (test_synth; `mistral` stays valid as the config-only alternative), `human` (hard set, v0.2 additions), `public_bitext` (test_ood) |
+| `generator_model` / `api_model_id` | the open-weights model id and the host's API id (e.g. `deepseek-ai/DeepSeek-V3.2` / `deepseek-ai/DeepSeek-V3.2` on DeepInfra); `generator_quantization` records the host's serving precision (`fp4`) |
+| `provider`, `generator_endpoint` | host label (`deepinfra`, `groq`, `mistral` (alternative), `owner`, `huggingface`) and `host|model|request date` |
 | `prompt_family`, `prompt_version`, `template_id` | `P-A` / `P-B`, the prompt file version (`pa_persona.v1`, `pb_scenario.v1`) and the template variant (`pa.t1`..`pa.t6`, `pb.s1+pb.m1`, `pb.s2+pb.m2`) |
 | `cell_id`, `scenario_seed`, `persona_id`, `company_id` | the generation-matrix cell and the pool entries used (checked for split disjointness, C4) |
 | `noise_ops` | masking and typo operations applied after generation |

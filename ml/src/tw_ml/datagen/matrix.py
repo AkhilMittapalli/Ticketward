@@ -37,7 +37,7 @@ from tw_ml.datagen.factsheet import FactSheet
 from tw_ml.datagen.labelrules import LabelRules
 from tw_ml.datagen.paths import default_paths
 from tw_ml.datagen.pools import Pools
-from tw_ml.datagen.records import SPLIT_CODES, GenerationCell
+from tw_ml.datagen.records import ALLOWED_FAMILIES, SPLIT_CODES, GenerationCell
 from tw_ml.datagen.taxonomy import Taxonomy
 from tw_ml.datagen.text import sha256_hex
 
@@ -79,7 +79,7 @@ class SplitSpec(SpecModel):
 
     n: int = Field(gt=0)
     family: Literal["A", "B"]
-    generator_family: Literal["openai_gpt_oss", "mistral"]
+    generator_family: Literal["openai_gpt_oss", "deepseek", "mistral"]
     prompt_family: Literal["P-A", "P-B"]
     prompt_file: str
     templates: tuple[str, ...] = Field(min_length=1)
@@ -291,6 +291,11 @@ def _validate(
     problems: list[str] = []
     if spec.taxonomy_version != tax.version:
         problems.append(f"taxonomy_version {spec.taxonomy_version} != {tax.version}")
+    problems += [  # T-DATA-provenance, checked before any generation
+        f"generator_family {split_spec.generator_family} not allowed in {split}"
+        for split, split_spec in spec.splits.items()
+        if split_spec.generator_family not in ALLOWED_FAMILIES[split]
+    ]
     if set(spec.intents) != set(tax.values("Intent")):
         problems.append("intents must list exactly the taxonomy intents")
     if sorted(spec.draw_order) != sorted(spec.dimensions):

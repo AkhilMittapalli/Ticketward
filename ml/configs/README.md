@@ -6,8 +6,8 @@ published dataset or run.
 
 | File | Purpose | Phase |
 |---|---|---|
-| `datagen.yaml` | generator families, hosts (DeepInfra primary / Groq fallback for Family A, Mistral for Family B), request parameters, retry policy, $15 budget, terms snapshot | P1 |
-| `datagen_prices.v1.yaml` | dated per-million-token prices (as of 2026-09-27) for token accounting and the budget cap | P1 |
+| `datagen.yaml` | generator families and hosts: Family A `openai/gpt-oss-120b` on DeepInfra (Groq fallback); Family B `deepseek-ai/DeepSeek-V3.2` on DeepInfra, served in fp4 (D-07; Mistral La Plateforme is a documented, config-only alternative). Per-host `seed_param` and `quantization`, exact-name model patterns, request parameters, retry policy, $15 budget, terms snapshot | P1 |
+| `datagen_prices.v1.yaml` | dated per-million-token prices (as of 2026-09-27) for token accounting and the budget cap; DeepSeek-V3.2 on DeepInfra $0.26 in / $0.38 out ($0.13 cached, informational); the Mistral row is kept for the alternative | P1 |
 | `leakage.yaml` | leakage checks C1-C7: thresholds, LSH parameters (asserted b=30, r=4), embedding model, KB and protected-string settings | P1 |
 | `rules_baseline.v1.yaml` | E1 rules baseline: keyword -> intent table, lexicon and error-code votes, product-area cues, priority, churn-ultimatum and sentiment cues; hashed into the E1 system id; revise on val only | P2 |
 
@@ -16,4 +16,5 @@ Planned (P2/P3): `bakeoff.yaml`, `sft_qwen35_2b.yaml`, `sft_qwen3_1p7b.yaml`,
 the P2 bake-off (ADR-0011) and pinned by HF revision SHA; the `config_sha` of each run is logged
 to MLflow (spec §9.5-§9.6).
 
-Secrets never live here: API keys come only from `TW_DATAGEN_{A,B}_API_KEY`.
+Secrets never live here: API keys come from `TW_DATAGEN_{A,B}_API_KEY` or the OS credential
+store (`python -m tw_ml.datagen keys set`); one DeepInfra key serves both families.

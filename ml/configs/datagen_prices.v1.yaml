@@ -10,4 +10,14 @@ source: docs/legal/generator-terms-2026-09-27.md
 entries:
   - {provider: deepinfra, api_model_id: openai/gpt-oss-120b, input_per_mtok: "0.037", output_per_mtok: "0.17"}
   - {provider: groq, api_model_id: openai/gpt-oss-120b, input_per_mtok: "0.15", output_per_mtok: "0.60"}
+  # Family B (D-07): DeepSeek-V3.2 on DeepInfra, served in fp4. Cached input is $0.13; the budget
+  # bills every input token at the uncached rate (a conservative upper bound).
+  - provider: deepinfra
+    api_model_id: deepseek-ai/DeepSeek-V3.2
+    input_per_mtok: "0.26"
+    output_per_mtok: "0.38"
+    cached_input_per_mtok: "0.13"
+    as_of: 2026-09-27
+    source: https://deepinfra.com/deepseek-ai/DeepSeek-V3.2
+  # Documented Family B alternative (config-only since D-07): Mistral Large 3 on La Plateforme.
   - {provider: mistral, api_model_id: mistral-large-3-25-12, input_per_mtok: "0.50", output_per_mtok: "1.50"}

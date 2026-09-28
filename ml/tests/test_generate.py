@@ -2,6 +2,7 @@
 
 import json
 from collections.abc import Callable
+from dataclasses import replace
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -104,6 +105,7 @@ def test_p_a_run_writes_records_with_full_provenance(
         assert prov.generator_family == "openai_gpt_oss"
         assert prov.generator_model == prov.api_model_id == "openai/gpt-oss-120b"
         assert prov.provider == "deepinfra"
+        assert prov.generator_quantization is None  # the Family A host profile states none
         assert prov.generator_endpoint == "deepinfra|openai/gpt-oss-120b|2026-09-27"
         assert (prov.prompt_family, prov.prompt_version, prov.template_id) == (
             "P-A",
@@ -296,6 +298,22 @@ def test_guards(easy_val_ctx: GenerationContext, tmp_path: Path, fake_provider: 
         run_generation(easy_val_ctx, _options(tmp_path), provider, clock=_clock)
 
 
+def test_config_and_matrix_must_name_the_same_generator(
+    easy_test_ctx: GenerationContext, tmp_path: Path
+) -> None:
+    """Switching B to the Mistral alternative in the config alone would mislabel provenance."""
+    config = easy_test_ctx.config
+    mistral = config.families["B"].model_copy(update={"generator_family": "mistral"})
+    ctx = replace(
+        easy_test_ctx,
+        config=config.model_copy(update={"families": {**config.families, "B": mistral}}),
+    )
+    options = _options(tmp_path, "test_synth", "B", n=1, dry_run=True)
+    with pytest.raises(GenerationError, match="change both together"):
+        run_generation(ctx, options, None, clock=_clock)
+    assert run_generation(easy_test_ctx, options, None, clock=_clock).processed == 1
+
+
 def test_terms_snapshot_guard(easy_val_ctx: GenerationContext) -> None:
     config, root = easy_val_ctx.config, easy_val_ctx.paths.root
     check_terms_snapshot(config, root, date(2026, 10, 27), reviewed=False)  # 30 days: still fine
@@ -347,12 +365,12 @@ def test_p_b_run_uses_scenario_spec_labels(
     for record in _records(tmp_path / "test_synth"):
         prov = record.provenance
         assert (prov.generator_family, prov.label_basis, prov.prompt_family) == (
-            "mistral",
+            "deepseek",
             "scenario_spec",
             "P-B",
         )
-        assert prov.generator_model == "mistralai/Mistral-Large-3-675B-Instruct-2512"
-        assert prov.api_model_id == "mistral-large-3-25-12"
+        assert prov.generator_model == prov.api_model_id == "deepseek-ai/DeepSeek-V3.2"
+        assert (prov.provider, prov.generator_quantization) == ("deepinfra", "fp4")
         assert record.scenario is not None
         assert record.self_check is None
         assert record.cell is not None

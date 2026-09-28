@@ -3,6 +3,7 @@
 import json
 from collections.abc import Callable
 from dataclasses import dataclass
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -97,6 +98,21 @@ def test_generate_dry_run_needs_no_key(
     rendered = sorted((tmp_path / "dry_run").glob("*.txt"))
     assert [p.name for p in rendered] == ["tr-c00000.txt", "tr-c00001.txt"]
     assert "### pa.t" in rendered[0].read_text(encoding="utf-8")
+
+
+def test_family_b_dry_run_prices_deepseek_on_deepinfra(
+    tmp_path: Path, paths: RepoPaths, capsys: pytest.CaptureFixture[str]
+) -> None:
+    argv = ["generate", "--split", "test_synth", "--family", "B", "--n", "5", "--dry-run"]
+    assert main([*argv, "--out", str(tmp_path)], paths) == EXIT_OK
+    summary = _json_head(_out(capsys))
+    assert (summary["dry_run"], summary["processed"]) == (True, 5)
+    # Upper bound: 5 x (900 + 1400) output tokens at $0.38/M = $0.00437, plus the prompts.
+    assert Decimal("0.0044") < Decimal(str(summary["estimated_usd"])) < Decimal("0.02")
+    rendered = sorted((tmp_path / "dry_run").glob("*.txt"))
+    assert len(rendered) == 5
+    text = rendered[0].read_text(encoding="utf-8")
+    assert text.count("### pb.") == 2  # both P-B stages
 
 
 def test_generate_without_a_key_is_a_usage_error(
@@ -198,7 +214,14 @@ def test_leakage_clean_and_leaking_inputs(
         return dict(json.loads(record.model_dump_json()))
 
     train_rows = [row(text, f"tr_{i:05d}") for i, text in enumerate(LEAK_TEXTS, start=1)]
-    test_meta = {"split": "test_synth", "generator_family": "mistral", "template_id": "pb.t1"}
+    test_meta = {
+        "split": "test_synth",
+        "generator_family": "deepseek",
+        "generator_model": "deepseek-ai/DeepSeek-V3.2",
+        "api_model_id": "deepseek-ai/DeepSeek-V3.2",
+        "generator_quantization": "fp4",
+        "template_id": "pb.t1",
+    }
     test_row = row(
         "Two-factor codes arrive by SMS about ten minutes after they expire.",
         "ts_00001",

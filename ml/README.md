@@ -94,11 +94,14 @@ could capture them.
 
 ```bash
 uv run python -m tw_ml.datagen keys set --family A      # hidden prompt; default host: deepinfra
-uv run python -m tw_ml.datagen keys set --family B      # Mistral (test_synth)
+uv run python -m tw_ml.datagen keys set --family B      # only if B needs its own key (see below)
 uv run python -m tw_ml.datagen keys status              # stored / not stored; never prints a key
 uv run python -m tw_ml.datagen keys delete --family A   # remove after rotating a key
 ```
 
+Family B (DeepSeek-V3.2, test_synth) also runs on DeepInfra (D-07), so one key covers both: with
+nothing stored for `B:deepinfra`, Family B reuses `A:deepinfra` (`keys status` shows
+`stored (shared with A:deepinfra)`). Keys are shared only between families on the same host.
 A `TW_DATAGEN_<family>_API_KEY` environment variable, when set, takes precedence (for CI or a
 one-off session). Use `--host groq` for the Family A fallback host; each host has its own entry.
 Backends that would store keys unencrypted or discard them are refused, and tests always use an

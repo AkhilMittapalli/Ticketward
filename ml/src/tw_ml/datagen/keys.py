@@ -6,12 +6,17 @@ config, or on a shell command line (where history could capture them).
 ``keyring``: Windows Credential Manager on Windows, Keychain on macOS, Secret Service on Linux.
 A ``TW_DATAGEN_<family>_API_KEY`` environment variable, when set, still takes precedence.
 
+One vendor account can serve several families (D-07: DeepInfra serves Family A and Family B), so a
+family with no key of its own reuses another family's key **on the same host** (``B:deepinfra``
+falls back to ``A:deepinfra``). Keys never cross hosts.
+
 Backends that would store the key unencrypted, or not at all, are refused.
 """
 
 from typing import Final
 
 SERVICE: Final = "ticketward-datagen"
+FAMILIES: Final[tuple[str, ...]] = ("A", "B")
 MIN_KEY_LENGTH: Final = 16
 MAX_KEY_LENGTH: Final = 512
 _REFUSED_BACKEND_MARKERS: Final = (
@@ -109,15 +114,16 @@ def store_key(family: str, host: str, key: str) -> None:
     keyring.set_password(SERVICE, credential_name(family, host), cleaned)
 
 
-def load_key(family: str, host: str) -> str | None:
-    """Read a stored key, if any.
+def find_key(family: str, host: str) -> tuple[str, str] | None:
+    """Find the key a family uses on a host: its own, else another family's on the same host.
 
     Args:
         family: ``A`` or ``B``.
         host: Host profile label.
 
     Returns:
-        The key, or ``None`` when nothing is stored or no secure store is available.
+        ``(key, credential name it was read from)``, or ``None`` when nothing usable is stored or
+        no secure store is available.
     """
     try:
         _require_secure_backend()
@@ -126,10 +132,46 @@ def load_key(family: str, host: str) -> str | None:
     import keyring  # noqa: PLC0415
     from keyring.errors import KeyringError  # noqa: PLC0415
 
-    try:
-        return keyring.get_password(SERVICE, credential_name(family, host))
-    except KeyringError:
-        return None
+    for owner in (family, *(f for f in FAMILIES if f != family)):
+        name = credential_name(owner, host)
+        try:
+            key = keyring.get_password(SERVICE, name)
+        except KeyringError:
+            continue
+        if key:
+            return key, name
+    return None
+
+
+def load_key(family: str, host: str) -> str | None:
+    """Read the key a family uses on a host (see :func:`find_key`).
+
+    Args:
+        family: ``A`` or ``B``.
+        host: Host profile label.
+
+    Returns:
+        The key, or ``None`` when nothing is stored or no secure store is available.
+    """
+    found = find_key(family, host)
+    return found[0] if found else None
+
+
+def key_status(family: str, host: str) -> str:
+    """Describe where a family's key on a host comes from, never the key itself.
+
+    Args:
+        family: ``A`` or ``B``.
+        host: Host profile label.
+
+    Returns:
+        ``stored``, ``stored (shared with A:deepinfra)`` or ``not stored``.
+    """
+    found = find_key(family, host)
+    if found is None:
+        return "not stored"
+    source = found[1]
+    return "stored" if source == credential_name(family, host) else f"stored (shared with {source})"
 
 
 def delete_key(family: str, host: str) -> bool:

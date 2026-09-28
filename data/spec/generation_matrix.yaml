@@ -32,7 +32,9 @@ splits:
   test_synth:
     n: 1045
     family: B
-    generator_family: mistral
+    # D-07 (2026-09-27): DeepSeek-V3.2 on DeepInfra. Must equal families.B.generator_family in
+    # ml/configs/datagen.yaml (generation refuses a mismatch); `mistral` is the config-only alternative.
+    generator_family: deepseek
     prompt_family: P-B
     prompt_file: pb_scenario.v1
     templates: [pb.s1+pb.m1, pb.s2+pb.m2]

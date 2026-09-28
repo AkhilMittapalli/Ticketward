@@ -45,9 +45,12 @@ def test_content_hash_must_match_the_ticket(
     ("split", "family", "extra"),
     [
         ("train", "mistral", {}),
+        ("train", "deepseek", {}),  # the test generator never writes training data
+        ("val", "deepseek", {}),
         ("val", "public_bitext", {}),
         ("test_synth", "openai_gpt_oss", {}),
         ("test_hard", "mistral", {"llm_assisted": False}),
+        ("test_hard", "deepseek", {"llm_assisted": False}),
         ("test_ood", "human", {}),
     ],
 )
@@ -56,6 +59,69 @@ def test_family_not_allowed_in_split(
 ) -> None:
     with pytest.raises(ValidationError, match="not allowed"):
         make_provenance(split=split, generator_family=family, record_id="tr_00009", **extra)
+
+
+@pytest.mark.parametrize(
+    ("family", "overrides"),
+    [
+        (
+            "deepseek",  # D-07 default: DeepSeek-V3.2 on DeepInfra, served in fp4
+            {
+                "generator_model": "deepseek-ai/DeepSeek-V3.2",
+                "api_model_id": "deepseek-ai/DeepSeek-V3.2",
+                "generator_quantization": "fp4",
+            },
+        ),
+        (
+            "mistral",  # the config-only alternative stays valid for test_synth
+            {
+                "generator_model": "mistralai/Mistral-Large-3-675B-Instruct-2512",
+                "api_model_id": "mistral-large-3-25-12",
+                "provider": "mistral",
+            },
+        ),
+    ],
+)
+@pytest.mark.parametrize(
+    ("split", "record_id"), [("test_synth", "ts_00001"), ("e2e_scenarios", "te_00001")]
+)
+def test_family_b_generators_are_valid_for_test_data(
+    make_provenance: ProvenanceFactory,
+    family: str,
+    overrides: dict[str, Any],
+    split: str,
+    record_id: str,
+) -> None:
+    prov = make_provenance(
+        split=split,
+        generator_family=family,
+        record_id=record_id,
+        prompt_family="P-B",
+        prompt_version="pb_scenario.v1",
+        template_id="pb.s1+pb.m1",
+        label_basis="scenario_spec",
+        **overrides,
+    )
+    assert provenance_violations(prov) == []
+    assert Provenance.model_validate_json(prov.model_dump_json()) == prov
+
+
+def test_generator_quantization_field(make_provenance: ProvenanceFactory) -> None:
+    assert make_provenance().generator_quantization is None
+    assert make_provenance(generator_quantization="fp4").generator_quantization == "fp4"
+    assert "generator_quantization" in Provenance.model_fields
+    for bad in ("FP4", "fp 4", "", "x" * 40):
+        with pytest.raises(ValidationError, match="generator_quantization"):
+            make_provenance(generator_quantization=bad)
+    with pytest.raises(ValidationError, match="model-generated"):
+        make_provenance(
+            split="test_hard",
+            generator_family="human",
+            prompt_family=None,
+            record_id="th_001",
+            llm_assisted=False,
+            generator_quantization="fp4",
+        )
 
 
 @pytest.mark.parametrize(

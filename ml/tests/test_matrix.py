@@ -347,3 +347,16 @@ def test_loader_rejects_inconsistent_files(
             taxonomy=taxonomy,
             rules=rules,
         )
+    swapped = dict(good["splits"])
+    swapped["test_synth"] = dict(swapped["test_synth"], generator_family="openai_gpt_oss")
+    with pytest.raises(MatrixError, match="openai_gpt_oss not allowed in test_synth"):
+        load_matrix(
+            _write_matrix(tmp_path, paths, {"splits": swapped}), taxonomy=taxonomy, rules=rules
+        )
+
+
+def test_test_synth_is_generated_by_deepseek(matrix: Matrix) -> None:
+    """D-07: Family B is DeepSeek-V3.2; the matrix provenance value must say so."""
+    spec = matrix.spec.splits["test_synth"]
+    assert (spec.family, spec.generator_family, spec.prompt_family) == ("B", "deepseek", "P-B")
+    assert {matrix.spec.splits[s].generator_family for s in ("train", "val")} == {"openai_gpt_oss"}

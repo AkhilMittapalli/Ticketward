@@ -295,6 +295,29 @@ def check_family(split: GeneratedSplit, family: Family, matrix: Matrix) -> None:
         raise GenerationError(msg)
 
 
+def check_generator_family(ctx: GenerationContext) -> None:
+    """Refuse a run whose configured generator differs from the one the matrix records.
+
+    Provenance ``generator_family`` comes from the matrix split, so switching Family B to its
+    config-only alternative (Mistral) must change ``data/spec/generation_matrix.yaml`` too.
+
+    Args:
+        ctx: Loaded context.
+
+    Raises:
+        GenerationError: If ``ml/configs/datagen.yaml`` and the matrix disagree.
+    """
+    split_spec = ctx.matrix.spec.splits[ctx.split]
+    configured = ctx.config.families[split_spec.family].generator_family
+    if configured != split_spec.generator_family:
+        msg = (
+            f"Family {split_spec.family} is configured for {configured} but "
+            f"generation_matrix.yaml records {split_spec.generator_family} for {ctx.split}; "
+            "change both together"
+        )
+        raise GenerationError(msg)
+
+
 # --------------------------------------------------------------------------- files and state
 
 
@@ -570,6 +593,7 @@ def run_generation(
         GenerationError: If the run may not start.
     """
     check_family(options.split, options.family, ctx.matrix)
+    check_generator_family(ctx)
     out_dir = options.out_dir or ctx.paths.generated_dir / options.split
     summary = RunSummary(
         split=options.split, family=options.family, out_dir=out_dir, dry_run=options.dry_run
@@ -930,6 +954,7 @@ def _finish(
             generator_family=split_spec.generator_family,
             generator_model=provider.open_weights_model,
             api_model_id=provider.api_model_id,
+            generator_quantization=provider.quantization,
             provider=provider.host,
             generator_endpoint=f"{provider.host}|{provider.api_model_id}|{now:%Y-%m-%d}",
             prompt_family=split_spec.prompt_family,

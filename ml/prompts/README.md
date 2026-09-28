@@ -9,7 +9,7 @@ version (`pa_persona.v2.txt`, `triage.v2.txt`).
 | File | Family | Templates | Used for |
 |---|---|---|---|
 | `datagen/pa_persona.v1.txt` | P-A persona-first, one call per ticket, returns ticket + proposed labels + self-check | `pa.t1`-`pa.t4` (train), `pa.t5`-`pa.t6` (val) | Family A (`openai/gpt-oss-120b`) |
-| `datagen/pb_scenario.v1.txt` | P-B scenario-first, two stages (case timeline, then the customer's message); **never asks for labels** | `pb.s1+pb.m1`, `pb.s2+pb.m2` | Family B (Mistral Large 3), test_synth |
+| `datagen/pb_scenario.v1.txt` | P-B scenario-first, two stages (case timeline, then the customer's message); **never asks for labels** | `pb.s1+pb.m1`, `pb.s2+pb.m2` | Family B (`deepseek-ai/DeepSeek-V3.2` on DeepInfra, D-07), test_synth |
 
 Rules (spec §9.1, ERPROT `synthetic-data-generation` D6):
 

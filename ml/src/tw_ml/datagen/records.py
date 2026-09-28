@@ -51,7 +51,7 @@ SPLIT_CODES: Final[Mapping[Split, str]] = {
     "e2e_scenarios": "te",
 }
 
-GeneratorFamily = Literal["openai_gpt_oss", "mistral", "human", "public_bitext"]
+GeneratorFamily = Literal["openai_gpt_oss", "deepseek", "mistral", "human", "public_bitext"]
 LabelSource = Literal["generator_proposed", "human_verified", "human_written", "public_mapped"]
 LabelBasis = Literal["llm_proposal", "scenario_spec", "human", "bitext_mapping"]
 PromptFamily = Literal["P-A", "P-B"]
@@ -61,17 +61,21 @@ Probe = Literal["P-H", "P-N"]
 ALLOWED_FAMILIES: Final[Mapping[Split, frozenset[str]]] = {
     "train": frozenset({"openai_gpt_oss", "human"}),
     "val": frozenset({"openai_gpt_oss", "human"}),
-    "test_synth": frozenset({"mistral"}),
+    "test_synth": frozenset({"deepseek", "mistral"}),  # D-07: DeepSeek-V3.2; Mistral = alternative
     "test_hard": frozenset({"human"}),
     "test_ood": frozenset({"public_bitext"}),
-    "e2e_scenarios": frozenset({"mistral", "human"}),
+    "e2e_scenarios": frozenset({"deepseek", "mistral", "human"}),
 }
 """T-DATA-provenance (spec §9.1 step 8, S-12)."""
+
+LLM_FAMILIES: Final[frozenset[str]] = frozenset({"openai_gpt_oss", "deepseek", "mistral"})
+"""Families whose records come from a prompted model (they need a prompt family)."""
 
 FORBIDDEN_VENDOR_MARKERS: Final[tuple[str, ...]] = ("anthropic", "claude")
 """A-01: no Anthropic-produced record may enter data/ (checked on every free-text field)."""
 
 RECORD_ID_PATTERN: Final = r"^[a-z]{2}_[a-z0-9_]{3,64}$"
+QUANTIZATION_PATTERN: Final = r"^[a-z0-9][a-z0-9_.-]{0,31}$"  # fp4, fp8, bf16, int4-awq ...
 SHA256_PATTERN: Final = r"^[0-9a-f]{64}$"
 Sha256 = Annotated[str, StringConstraints(pattern=SHA256_PATTERN)]
 ChurnSignal = Annotated[str, StringConstraints(max_length=200)]
@@ -278,6 +282,8 @@ class Provenance(RecordModel):
 
     ``generator_model`` is the open-weights model id; ``api_model_id`` is the hosted API's id for
     it (they differ on some hosts, e.g. Mistral's ``mistral-large-3-25-12``).
+    ``generator_quantization`` is the precision the host served the model in (``fp4`` for
+    DeepSeek-V3.2 on DeepInfra), taken from the host profile; ``None`` when not stated.
     """
 
     record_id: str = Field(pattern=RECORD_ID_PATTERN)
@@ -285,6 +291,7 @@ class Provenance(RecordModel):
     generator_family: GeneratorFamily
     generator_model: str = Field(min_length=1, max_length=200)
     api_model_id: str | None = Field(default=None, max_length=200)
+    generator_quantization: str | None = Field(default=None, pattern=QUANTIZATION_PATTERN)
     provider: str = Field(min_length=1, max_length=100)
     generator_endpoint: str | None = Field(default=None, max_length=400)
     prompt_family: PromptFamily | None = None
@@ -344,8 +351,10 @@ def provenance_violations(prov: Provenance) -> list[str]:
         problems.append("test_hard records need the attestation llm_assisted=false")
     if prov.split == "test_ood" and (prov.bitext is None or prov.mapping_tier is None):
         problems.append("test_ood records need a bitext row pointer and a mapping_tier")
-    if prov.generator_family in {"openai_gpt_oss", "mistral"} and prov.prompt_family is None:
+    if prov.generator_family in LLM_FAMILIES and prov.prompt_family is None:
         problems.append("generated records need a prompt_family")
+    if prov.generator_quantization is not None and prov.generator_family not in LLM_FAMILIES:
+        problems.append("generator_quantization is recorded only for model-generated records")
     if prov.label_source == "human_verified" and not prov.reviewed_by:
         problems.append("human_verified labels need reviewed_by")
     return problems

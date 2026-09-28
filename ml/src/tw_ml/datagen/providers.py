@@ -1,10 +1,12 @@
 """Generator providers: one OpenAI-compatible chat-completions client for every host.
 
 Family A (``openai/gpt-oss-120b``, train/val) runs on DeepInfra by default with Groq as the
-fallback; Family B (Mistral Large 3, test_synth) runs on Mistral La Plateforme (spec v1.1 A-01;
-``docs/legal/generator-terms-2026-09-27.md``). All three speak the OpenAI chat-completions wire
-format, so one small ``httpx`` client covers them; host differences (the seed parameter name,
-``reasoning_effort``) are configuration.
+fallback; Family B (``deepseek-ai/DeepSeek-V3.2``, test_synth) runs on DeepInfra, served in fp4
+(owner decision D-07, 2026-09-27; spec v1.1 A-01; ``docs/legal/generator-terms-2026-09-27.md``).
+Mistral Large 3 on Mistral La Plateforme remains a documented, config-only alternative for B.
+Every host speaks the OpenAI chat-completions wire format, so one small ``httpx`` client covers
+them; host differences (the seed parameter name, ``reasoning_effort``, the served quantization)
+are configuration. One DeepInfra key can serve both families (``tw_ml.datagen.keys``).
 
 Configuration comes from ``ml/configs/datagen.yaml`` and is overridden by environment variables
 ``TW_DATAGEN_{A,B}_HOST``, ``_BASE_URL``, ``_MODEL`` and ``_API_KEY``. The API key lives only in
@@ -25,14 +27,15 @@ from datetime import date
 from decimal import Decimal
 from email.utils import parsedate_to_datetime
 from pathlib import Path
-from typing import Any, Final, Literal, Protocol
+from typing import Any, Final, Literal, Protocol, Self
 from urllib.parse import urlsplit
 
 import httpx
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from tw_ml.datagen.prompts import ChatMessage
+from tw_ml.datagen.records import QUANTIZATION_PATTERN
 
 Family = Literal["A", "B"]
 ENV_PREFIXES: Final[Mapping[Family, str]] = {"A": "TW_DATAGEN_A_", "B": "TW_DATAGEN_B_"}
@@ -133,26 +136,76 @@ class RequestConfig(ConfigModel):
     top_p: float | None = Field(default=None, gt=0, le=1)
     max_tokens: int = Field(gt=0)
     response_format: Literal["json_object"] | None = "json_object"
-    seed_param: Literal["seed", "random_seed"] | None = "seed"
     extra: dict[str, str | int | float | bool] = Field(default_factory=dict)
 
 
+SeedParam = Literal["seed", "random_seed"]
+DEFAULT_SEED_PARAM: Final[SeedParam] = "seed"  # the OpenAI name (DeepInfra, Groq)
+
+
 class HostConfig(ConfigModel):
-    """One host serving a family's model."""
+    """One host serving a family's model.
+
+    Attributes:
+        base_url: OpenAI-compatible base URL.
+        api_model_id: The host's model id.
+        seed_param: Name of the host's seed parameter (``random_seed`` on Mistral La Plateforme);
+            ``None`` sends no seed.
+        quantization: Precision the host serves the model in (e.g. ``fp4``), recorded as
+            ``provenance.generator_quantization``; ``None`` when the host does not state it.
+    """
 
     base_url: str
     api_model_id: str
+    seed_param: SeedParam | None = DEFAULT_SEED_PARAM
+    quantization: str | None = Field(default=None, pattern=QUANTIZATION_PATTERN)
+
+
+GeneratorFamilyName = Literal["openai_gpt_oss", "deepseek", "mistral"]
+
+
+def model_allowed(model: str, patterns: Sequence[str]) -> bool:
+    """Whether a model id names one of a family's generators.
+
+    A pattern is an exact, case-insensitive model name: it must equal the id's last path segment
+    (``DeepSeek-V3.2`` accepts ``deepseek-ai/DeepSeek-V3.2`` but not ``DeepSeek-V3.2-Exp`` or a
+    ``...-DeepSeek-V3.2-Distill-...`` model), or the whole id when the pattern contains ``/``.
+
+    Args:
+        model: The host's model id.
+        patterns: The family's ``allowed_model_patterns``.
+
+    Returns:
+        True when the model is allowed.
+    """
+    lowered = model.strip().lower()
+    name = lowered.rsplit("/", 1)[-1]
+    return any((lowered if "/" in p else name) == p.strip().lower() for p in patterns)
 
 
 class FamilyConfig(ConfigModel):
     """One generator family."""
 
-    generator_family: Literal["openai_gpt_oss", "mistral"]
+    generator_family: GeneratorFamilyName
     open_weights_model: str
     allowed_model_patterns: tuple[str, ...] = Field(min_length=1)
     default_host: str
     hosts: dict[str, HostConfig]
     requests: dict[str, RequestConfig]
+
+    @model_validator(mode="after")
+    def _consistent(self) -> Self:
+        if self.default_host not in self.hosts:
+            msg = f"default_host {self.default_host!r} has no host profile"
+            raise ValueError(msg)
+        for label, host in self.hosts.items():
+            if not model_allowed(host.api_model_id, self.allowed_model_patterns):
+                msg = f"host {label}: {host.api_model_id!r} is not this family's generator"
+                raise ValueError(msg)
+        if not model_allowed(self.open_weights_model, self.allowed_model_patterns):
+            msg = "open_weights_model does not match allowed_model_patterns"
+            raise ValueError(msg)
+        return self
 
 
 class DatagenConfig(ConfigModel):
@@ -166,6 +219,20 @@ class DatagenConfig(ConfigModel):
     max_attempts_per_cell: int = Field(ge=1, le=5)
     http: HttpConfig
     families: dict[Family, FamilyConfig]
+
+    @model_validator(mode="after")
+    def _families_are_disjoint(self) -> Self:
+        """A-01 separation: no model may be allowed for two families (train vs test generator)."""
+        configs = list(self.families.values())
+        for index, first in enumerate(configs):
+            for second in configs[index + 1 :]:
+                if first.generator_family == second.generator_family or any(
+                    model_allowed(p, second.allowed_model_patterns)
+                    for p in first.allowed_model_patterns
+                ):
+                    msg = "two generator families share a generator"
+                    raise ValueError(msg)
+        return self
 
 
 def load_datagen_config(path: Path) -> DatagenConfig:
@@ -193,13 +260,16 @@ class ProviderSettings:
 
     Attributes:
         family: Generator family (A or B).
-        host: Host label (``deepinfra``, ``groq``, ``mistral``); the provenance ``provider``.
+        host: Host label (``deepinfra``, ``groq``); the provenance ``provider``.
         base_url: OpenAI-compatible base URL.
         api_model_id: The host's model id.
         open_weights_model: The open-weights id recorded as ``generator_model``.
         generator_family: Provenance family value.
         api_key: The key (redacted when printed).
         http: Timeouts and retry policy.
+        seed_param: The host's seed parameter name (``None``: no seed is sent).
+        quantization: Served precision from the host profile (provenance
+            ``generator_quantization``); ``None`` when unknown, e.g. for an environment override.
     """
 
     family: Family
@@ -210,6 +280,8 @@ class ProviderSettings:
     generator_family: str
     api_key: ApiKey = field(repr=False)
     http: HttpConfig
+    seed_param: SeedParam | None = DEFAULT_SEED_PARAM
+    quantization: str | None = None
 
 
 def resolve_settings(
@@ -245,16 +317,31 @@ def resolve_settings(
     if not base_url or not model:
         msg = f"unknown host {label!r}; set {prefix}BASE_URL and {prefix}MODEL"
         raise ProviderConfigError(msg)
+    # Host facts apply only to the profiled endpoint. An overridden URL is an unknown host: it
+    # gets the OpenAI seed name, no quantization claim and never a stored key (a key stored for
+    # a host, possibly shared by another family, is only ever sent to that host's own URL).
+    profiled = host_config is not None and (
+        base_url.rstrip("/") == host_config.base_url.rstrip("/")
+    )
     key = env.get(f"{prefix}API_KEY", "")
-    if not key.strip() and key_lookup is not None:
+    if not key.strip() and key_lookup is not None and profiled:
         key = key_lookup(family, label) or ""
     if not key.strip():
         msg = (
             f"{prefix}API_KEY is not set and no key is stored for {family}:{label}; "
             f"run: python -m tw_ml.datagen keys set --family {family} --host {label}"
+            if profiled
+            else f"{prefix}API_KEY is required for an endpoint outside the {label!r} host "
+            "profile (stored keys are sent only to their host's configured URL)"
         )
         raise ProviderConfigError(msg)
     check_generator_safety(base_url, model, family_config)
+    seed_param: SeedParam | None = DEFAULT_SEED_PARAM
+    quantization: str | None = None
+    if profiled and host_config is not None:
+        seed_param = host_config.seed_param
+        if model == host_config.api_model_id:
+            quantization = host_config.quantization
     return ProviderSettings(
         family=family,
         host=label,
@@ -264,6 +351,8 @@ def resolve_settings(
         generator_family=family_config.generator_family,
         api_key=ApiKey(key),
         http=config.http,
+        seed_param=seed_param,
+        quantization=quantization,
     )
 
 
@@ -287,7 +376,7 @@ def check_generator_safety(base_url: str, model: str, family_config: FamilyConfi
     if FORBIDDEN_GENERATOR.search(base_url) or FORBIDDEN_GENERATOR.search(model):
         msg = "Anthropic models and endpoints must never generate data (A-01)"
         raise ProviderConfigError(msg)
-    if not any(p.lower() in model.lower() for p in family_config.allowed_model_patterns):
+    if not model_allowed(model, family_config.allowed_model_patterns):
         msg = f"model {model!r} is not this family's generator"
         raise ProviderConfigError(msg)
 
@@ -313,12 +402,25 @@ class TokenUsage:
 
 
 class PriceEntry(ConfigModel):
-    """Dated per-million-token prices of one host/model pair."""
+    """Dated per-million-token prices of one host/model pair.
+
+    Attributes:
+        provider: Host label.
+        api_model_id: The host's model id.
+        input_per_mtok: Uncached input price (billed for every input token: an upper bound).
+        output_per_mtok: Output price (reasoning tokens included).
+        cached_input_per_mtok: Cached-input price, informational only.
+        as_of: Date the row was verified, when it differs from the table's or is stated per row.
+        source: Vendor page or snapshot the row was taken from.
+    """
 
     provider: str
     api_model_id: str
     input_per_mtok: Decimal = Field(ge=0)
     output_per_mtok: Decimal = Field(ge=0)
+    cached_input_per_mtok: Decimal | None = Field(default=None, ge=0)
+    as_of: date | None = None
+    source: str | None = Field(default=None, max_length=300)
 
 
 class PriceTable(ConfigModel):
@@ -505,6 +607,11 @@ class ChatProvider(Protocol):
         """Open-weights model id (provenance ``generator_model``)."""
         ...
 
+    @property
+    def quantization(self) -> str | None:
+        """Served precision (provenance ``generator_quantization``), when the host states it."""
+        ...
+
     def complete(self, request: ChatRequest) -> ChatResult:
         """Run one completion."""
         ...
@@ -549,6 +656,11 @@ class OpenAICompatibleProvider:
     def open_weights_model(self) -> str:
         """Open-weights model id (provenance ``generator_model``)."""
         return self._settings.open_weights_model
+
+    @property
+    def quantization(self) -> str | None:
+        """Served precision from the host profile (provenance ``generator_quantization``)."""
+        return self._settings.quantization
 
     def close(self) -> None:
         """Close the HTTP client."""
@@ -613,8 +725,9 @@ class OpenAICompatibleProvider:
             body["top_p"] = params.top_p
         if params.response_format:
             body["response_format"] = {"type": params.response_format}
-        if params.seed_param and request.seed is not None:
-            body[params.seed_param] = request.seed % (2**31)
+        seed_param = self._settings.seed_param  # a host property: `random_seed` on Mistral
+        if seed_param and request.seed is not None:
+            body[seed_param] = request.seed % (2**31)
         body.update(params.extra)
         return body
 
@@ -688,6 +801,7 @@ class FakeProvider:
         host: Host label to report.
         api_model_id: Model id to report.
         open_weights_model: Open-weights id to report.
+        quantization: Served precision to report.
         calls: Every request received, in order.
         failures: Errors to raise on the next calls (consumed first-in, first-out).
     """
@@ -696,6 +810,7 @@ class FakeProvider:
     host: str = "fakehost"
     api_model_id: str = "fake-model"
     open_weights_model: str = "fake/open-weights"
+    quantization: str | None = None
     calls: list[ChatRequest] = field(default_factory=list)
     failures: list[ProviderError] = field(default_factory=list)
 
