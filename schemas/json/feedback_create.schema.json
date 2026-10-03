@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Agent feedback on a triage field, draft, citation, handoff or policy decision.\n\n``corrected_value`` is validated against the target enum at the service layer\nwhen ``target_type=\"triage_field\"`` (e.g. a corrected intent must be a valid\n``Intent`` value).",
+  "properties": {
+    "target_type": {
+      "enum": [
+        "triage_field",
+        "draft",
+        "citation",
+        "handoff",
+        "policy_decision"
+      ],
+      "title": "Target Type",
+      "type": "string"
+    },
+    "target_id": {
+      "format": "uuid",
+      "title": "Target Id",
+      "type": "string"
+    },
+    "field": {
+      "anyOf": [
+        {
+          "enum": [
+            "intent",
+            "priority",
+            "sentiment",
+            "churn_risk",
+            "product_area",
+            "recommended_queue",
+            "recommended_action"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Field"
+    },
+    "action": {
+      "enum": [
+        "accept",
+        "edit",
+        "reject",
+        "flag",
+        "override"
+      ],
+      "title": "Action",
+      "type": "string"
+    },
+    "corrected_value": {
+      "anyOf": [
+        {
+          "maxLength": 200,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Corrected Value"
+    },
+    "edited_text": {
+      "anyOf": [
+        {
+          "maxLength": 20000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Edited Text"
+    },
+    "flag_reason": {
+      "anyOf": [
+        {
+          "enum": [
+            "hallucination",
+            "wrong_citation",
+            "unsafe",
+            "tone",
+            "pii_leak",
+            "outdated_source",
+            "other"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Flag Reason"
+    },
+    "comment": {
+      "anyOf": [
+        {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Comment"
+    }
+  },
+  "required": [
+    "target_type",
+    "target_id",
+    "action"
+  ],
+  "title": "FeedbackCreate",
+  "type": "object"
+}

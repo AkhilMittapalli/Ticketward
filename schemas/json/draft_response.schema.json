@@ -1,0 +1,438 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "Citation": {
+      "additionalProperties": false,
+      "description": "A chunk-level citation backing one or more draft sentences (spec §6.3, §8.7).\n\n``support_score`` is the NLI entailment probability of the verifier's L2 layer,\nnot a retrieval score.",
+      "properties": {
+        "citation_id": {
+          "maxLength": 64,
+          "title": "Citation Id",
+          "type": "string"
+        },
+        "doc_id": {
+          "format": "uuid",
+          "title": "Doc Id",
+          "type": "string"
+        },
+        "doc_version": {
+          "minimum": 1,
+          "title": "Doc Version",
+          "type": "integer"
+        },
+        "chunk_id": {
+          "maxLength": 128,
+          "title": "Chunk Id",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 300,
+          "title": "Title",
+          "type": "string"
+        },
+        "doc_type": {
+          "$ref": "#/$defs/DocType"
+        },
+        "url_slug": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url Slug"
+        },
+        "quote": {
+          "maxLength": 300,
+          "title": "Quote",
+          "type": "string"
+        },
+        "support_score": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Support Score",
+          "type": "number"
+        }
+      },
+      "required": [
+        "citation_id",
+        "doc_id",
+        "doc_version",
+        "chunk_id",
+        "title",
+        "doc_type",
+        "quote",
+        "support_score"
+      ],
+      "title": "Citation",
+      "type": "object"
+    },
+    "DocType": {
+      "description": "Knowledge-base document types (spec §8.1).",
+      "enum": [
+        "help_article",
+        "policy",
+        "product_doc",
+        "known_incident",
+        "escalation_runbook",
+        "reply_template"
+      ],
+      "title": "DocType",
+      "type": "string"
+    },
+    "DraftSentence": {
+      "additionalProperties": false,
+      "description": "One sentence of a model-generated draft (spec §6.3).",
+      "properties": {
+        "text": {
+          "maxLength": 2000,
+          "title": "Text",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "factual",
+            "procedural",
+            "empathy",
+            "question",
+            "holding"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "citation_ids": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "title": "Citation Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "text",
+        "kind"
+      ],
+      "title": "DraftSentence",
+      "type": "object"
+    },
+    "ModelMeta": {
+      "additionalProperties": false,
+      "description": "Provenance of a model output (registry version, prompt, calibration, cost).",
+      "properties": {
+        "provider": {
+          "enum": [
+            "local_ollama",
+            "local_vllm",
+            "anthropic",
+            "rules_baseline",
+            "encoder_baseline"
+          ],
+          "title": "Provider",
+          "type": "string"
+        },
+        "model_name": {
+          "maxLength": 200,
+          "title": "Model Name",
+          "type": "string"
+        },
+        "model_version": {
+          "description": "Registry version tw-triage-<base>-<method>@<semver>, e.g. \"tw-triage-qwen35-2b-lora@0.1.0\" (illustrative until ADR-0011).",
+          "maxLength": 200,
+          "title": "Model Version",
+          "type": "string"
+        },
+        "adapter_sha": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Adapter Sha"
+        },
+        "prompt_version": {
+          "maxLength": 64,
+          "title": "Prompt Version",
+          "type": "string"
+        },
+        "taxonomy_version": {
+          "maxLength": 32,
+          "title": "Taxonomy Version",
+          "type": "string"
+        },
+        "schema_version": {
+          "default": "triage.v1",
+          "maxLength": 32,
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "policy_version": {
+          "maxLength": 64,
+          "title": "Policy Version",
+          "type": "string"
+        },
+        "latency_ms": {
+          "minimum": 0,
+          "title": "Latency Ms",
+          "type": "integer"
+        },
+        "input_tokens": {
+          "minimum": 0,
+          "title": "Input Tokens",
+          "type": "integer"
+        },
+        "output_tokens": {
+          "minimum": 0,
+          "title": "Output Tokens",
+          "type": "integer"
+        },
+        "cost_usd": {
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+          "title": "Cost Usd",
+          "type": "string"
+        },
+        "repair_attempts": {
+          "minimum": 0,
+          "title": "Repair Attempts",
+          "type": "integer"
+        },
+        "confidence_method": {
+          "enum": [
+            "token_logprob",
+            "self_consistency",
+            "calibrated_softmax"
+          ],
+          "title": "Confidence Method",
+          "type": "string"
+        },
+        "calibrator_version": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "E.g. \"calibrator.v1\" (A-04); null for uncalibrated baselines.",
+          "title": "Calibrator Version"
+        },
+        "calibration_fit_run_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "eval_runs.id of the val fit.",
+          "title": "Calibration Fit Run Id"
+        },
+        "decoding_backend": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "E.g. \"ollama-0.34.4/llama.cpp-b11081\" or \"vllm-0.30.x/xgrammar\".",
+          "title": "Decoding Backend"
+        },
+        "logprobs_mode": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "E.g. \"ollama-raw-pre-grammar\" or \"vllm-raw_logprobs\".",
+          "title": "Logprobs Mode"
+        }
+      },
+      "required": [
+        "provider",
+        "model_name",
+        "model_version",
+        "adapter_sha",
+        "prompt_version",
+        "taxonomy_version",
+        "policy_version",
+        "latency_ms",
+        "input_tokens",
+        "output_tokens",
+        "cost_usd",
+        "repair_attempts",
+        "confidence_method",
+        "calibrator_version",
+        "calibration_fit_run_id",
+        "decoding_backend",
+        "logprobs_mode"
+      ],
+      "title": "ModelMeta",
+      "type": "object"
+    },
+    "TemplateReply": {
+      "additionalProperties": false,
+      "description": "An approved reply template attached when ``mode=\"none\"`` (spec §6.3, I-13).\n\nTemplate keys are stable ``DocKey`` slugs (e.g. ``tpl_security_ack``),\nmatching ``reply_template`` documents in the KB.",
+      "properties": {
+        "template_key": {
+          "pattern": "^[a-z][a-z0-9_]{1,127}$",
+          "title": "Template Key",
+          "type": "string"
+        },
+        "doc_version": {
+          "minimum": 1,
+          "title": "Doc Version",
+          "type": "integer"
+        },
+        "body_markdown": {
+          "maxLength": 40000,
+          "title": "Body Markdown",
+          "type": "string"
+        }
+      },
+      "required": [
+        "template_key",
+        "doc_version",
+        "body_markdown"
+      ],
+      "title": "TemplateReply",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "System-produced draft for agent review (spec §6.3).\n\nNothing unvalidated reaches the UI (§6.6 step 7): FastAPI response validation\nstays on for this model as well.",
+  "properties": {
+    "draft_id": {
+      "format": "uuid",
+      "title": "Draft Id",
+      "type": "string"
+    },
+    "ticket_id": {
+      "format": "uuid",
+      "title": "Ticket Id",
+      "type": "string"
+    },
+    "triage_run_id": {
+      "format": "uuid",
+      "title": "Triage Run Id",
+      "type": "string"
+    },
+    "mode": {
+      "enum": [
+        "grounded_answer",
+        "clarifying_questions",
+        "holding_reply_template",
+        "none"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "sentences": {
+      "items": {
+        "$ref": "#/$defs/DraftSentence"
+      },
+      "maxItems": 40,
+      "title": "Sentences",
+      "type": "array"
+    },
+    "body_markdown": {
+      "maxLength": 40000,
+      "title": "Body Markdown",
+      "type": "string"
+    },
+    "citations": {
+      "items": {
+        "$ref": "#/$defs/Citation"
+      },
+      "maxItems": 50,
+      "title": "Citations",
+      "type": "array"
+    },
+    "template_reply": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TemplateReply"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "unsupported_sentence_count": {
+      "minimum": 0,
+      "title": "Unsupported Sentence Count",
+      "type": "integer"
+    },
+    "generated_by": {
+      "$ref": "#/$defs/ModelMeta"
+    },
+    "status": {
+      "enum": [
+        "pending_review",
+        "approved",
+        "edited_and_approved",
+        "rejected",
+        "superseded"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "guard_flags": {
+      "items": {
+        "enum": [
+          "claims_pricing_without_source",
+          "claims_account_status",
+          "claims_refund_eligibility",
+          "claims_incident_status_without_record",
+          "claims_capability_without_source",
+          "claims_timing_without_source",
+          "contains_url_not_in_kb",
+          "contains_pii",
+          "injection_echo"
+        ],
+        "type": "string"
+      },
+      "title": "Guard Flags",
+      "type": "array"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "draft_id",
+    "ticket_id",
+    "triage_run_id",
+    "mode",
+    "sentences",
+    "body_markdown",
+    "citations",
+    "unsupported_sentence_count",
+    "generated_by",
+    "status",
+    "created_at"
+  ],
+  "title": "DraftResponse",
+  "type": "object"
+}

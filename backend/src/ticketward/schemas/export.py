@@ -15,6 +15,9 @@ from pydantic import BaseModel
 from pydantic.json_schema import JsonSchemaMode
 
 from ticketward.domain.taxonomy import TAXONOMY_ENUMS, TAXONOMY_VERSION
+from ticketward.schemas.draft import DraftResponse
+from ticketward.schemas.feedback import FeedbackCreate
+from ticketward.schemas.handoff import CSMHandoff, EngineeringHandoff, HandoffBase
 from ticketward.schemas.problem import ProblemDetail
 from ticketward.schemas.ticket import TicketCreate
 from ticketward.schemas.triage import TriageModelOutput, TriageResult
@@ -25,6 +28,11 @@ MODEL_EXPORTS: Final[tuple[tuple[str, type[BaseModel], JsonSchemaMode], ...]] = 
     ("ticket_create", TicketCreate, "validation"),
     ("triage_model_output", TriageModelOutput, "validation"),
     ("triage_result", TriageResult, "serialization"),
+    ("draft_response", DraftResponse, "serialization"),
+    ("handoff_base", HandoffBase, "serialization"),
+    ("handoff_csm", CSMHandoff, "serialization"),
+    ("handoff_engineering", EngineeringHandoff, "serialization"),
+    ("feedback_create", FeedbackCreate, "validation"),
     ("problem_detail", ProblemDetail, "serialization"),
 )
 """(file stem, model, mode): inputs we validate use ``validation``, outputs ``serialization``."""

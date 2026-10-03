@@ -1,0 +1,548 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "ChurnRisk": {
+      "description": "Churn risk (spec §5.5). Assistive signal only (L-02).",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "title": "ChurnRisk",
+      "type": "string"
+    },
+    "CustomerImpact": {
+      "additionalProperties": false,
+      "description": "Scope of customer impact for engineering triage (spec §6.4).",
+      "properties": {
+        "users_affected": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Users Affected"
+        },
+        "workspaces_affected": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Workspaces Affected"
+        },
+        "business_impact": {
+          "maxLength": 1000,
+          "title": "Business Impact",
+          "type": "string"
+        }
+      },
+      "required": [
+        "business_impact"
+      ],
+      "title": "CustomerImpact",
+      "type": "object"
+    },
+    "Entity": {
+      "additionalProperties": false,
+      "description": "What the model emits: type and value only, never spans (A-29).\n\nPII never appears raw, only as masked placeholders such as ``<EMAIL_1>`` (§5.6).",
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/EntityType"
+        },
+        "value": {
+          "maxLength": 200,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "value"
+      ],
+      "title": "Entity",
+      "type": "object"
+    },
+    "EntityType": {
+      "description": "Extractable entity types (spec §5.6). PII appears only as masked placeholders.",
+      "enum": [
+        "error_code",
+        "http_status",
+        "saml_idp",
+        "invoice_id",
+        "charge_amount",
+        "currency",
+        "charge_date",
+        "workspace_id",
+        "account_id",
+        "user_count_affected",
+        "browser",
+        "os",
+        "app_version",
+        "integration_name",
+        "api_endpoint",
+        "feature_name",
+        "region",
+        "timestamp",
+        "competitor_name",
+        "legal_reference",
+        "steps_already_tried"
+      ],
+      "title": "EntityType",
+      "type": "string"
+    },
+    "EnvironmentInfo": {
+      "additionalProperties": false,
+      "description": "Client environment reported with a bug or outage (spec §6.4).",
+      "properties": {
+        "browser": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Browser"
+        },
+        "os": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Os"
+        },
+        "app_version": {
+          "anyOf": [
+            {
+              "maxLength": 50,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "App Version"
+        },
+        "platform": {
+          "anyOf": [
+            {
+              "maxLength": 50,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Platform"
+        },
+        "region": {
+          "anyOf": [
+            {
+              "maxLength": 50,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Region"
+        }
+      },
+      "title": "EnvironmentInfo",
+      "type": "object"
+    },
+    "EscalationReason": {
+      "description": "Escalation reasons recorded in ``escalation_reasons[]`` (spec §5.9, v1.1).\n\nv1.1 added ``critical_category_suspected`` (rule N6), ``queue_overridden_by_rule``\n(rule N1 / §7.3.2) and ``pii_masking_failed`` (rule P7). They are system-emitted, not\nmodel labels, so ``TAXONOMY_VERSION`` stays ``2026-09-v1`` (ADR-0029 amendment).\nMember order follows the spec list.",
+      "enum": [
+        "customer_requested_human",
+        "forced_category_refund",
+        "forced_category_cancellation",
+        "forced_category_payment_dispute",
+        "forced_category_security",
+        "forced_category_legal_threat",
+        "forced_category_privacy",
+        "active_incident",
+        "critical_category_suspected",
+        "low_confidence_intent",
+        "low_confidence_queue",
+        "queue_overridden_by_rule",
+        "insufficient_evidence",
+        "stale_evidence_only",
+        "conflicting_evidence",
+        "schema_invalid_after_repair",
+        "prompt_injection_suspected",
+        "unsupported_language",
+        "high_churn_risk_high_value",
+        "retention_risk",
+        "pii_heavy_content",
+        "pii_masking_failed",
+        "input_truncated",
+        "model_unavailable",
+        "agent_initiated"
+      ],
+      "title": "EscalationReason",
+      "type": "string"
+    },
+    "Intent": {
+      "description": "Primary/secondary customer intent (spec §5.1): 12 intents + reserved fallback.",
+      "enum": [
+        "sso_login_failure",
+        "account_access_issue",
+        "billing_duplicate_charge",
+        "billing_payment_failure",
+        "refund_request",
+        "cancellation_request",
+        "plan_pricing_inquiry",
+        "service_outage",
+        "bug_report",
+        "how_to_question",
+        "security_report",
+        "privacy_legal_request",
+        "other_unclear"
+      ],
+      "title": "Intent",
+      "type": "string"
+    },
+    "PlanTier": {
+      "description": "Taskmoor plan tiers (spec §3, §6.1).",
+      "enum": [
+        "free",
+        "starter",
+        "business",
+        "enterprise"
+      ],
+      "title": "PlanTier",
+      "type": "string"
+    },
+    "Priority": {
+      "description": "Ticket priority (spec §5.3), highest first.",
+      "enum": [
+        "urgent",
+        "high",
+        "normal",
+        "low"
+      ],
+      "title": "Priority",
+      "type": "string"
+    },
+    "Sentiment": {
+      "description": "Customer sentiment of the latest message (spec §5.4). Assistive signal only (L-02).",
+      "enum": [
+        "positive",
+        "neutral",
+        "confused",
+        "frustrated",
+        "angry"
+      ],
+      "title": "Sentiment",
+      "type": "string"
+    },
+    "TicketContextRef": {
+      "additionalProperties": false,
+      "description": "Pointer to the originating ticket without echoing its text.",
+      "properties": {
+        "ticket_id": {
+          "format": "uuid",
+          "title": "Ticket Id",
+          "type": "string"
+        },
+        "message_count": {
+          "minimum": 0,
+          "title": "Message Count",
+          "type": "integer"
+        },
+        "first_received_at": {
+          "format": "date-time",
+          "title": "First Received At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ticket_id",
+        "message_count",
+        "first_received_at"
+      ],
+      "title": "TicketContextRef",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Engineering escalation handoff (spec §6.4).",
+  "properties": {
+    "handoff_id": {
+      "format": "uuid",
+      "title": "Handoff Id",
+      "type": "string"
+    },
+    "ticket_id": {
+      "format": "uuid",
+      "title": "Ticket Id",
+      "type": "string"
+    },
+    "target": {
+      "enum": [
+        "csm",
+        "engineering",
+        "billing",
+        "security_privacy",
+        "tier_2"
+      ],
+      "title": "Target",
+      "type": "string"
+    },
+    "variant": {
+      "const": "engineering",
+      "title": "Variant",
+      "type": "string"
+    },
+    "one_line_summary": {
+      "maxLength": 200,
+      "title": "One Line Summary",
+      "type": "string"
+    },
+    "customer_problem": {
+      "maxLength": 2000,
+      "title": "Customer Problem",
+      "type": "string"
+    },
+    "customer_goal": {
+      "maxLength": 1000,
+      "title": "Customer Goal",
+      "type": "string"
+    },
+    "account_tier": {
+      "$ref": "#/$defs/PlanTier"
+    },
+    "arr_band": {
+      "anyOf": [
+        {
+          "maxLength": 20,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Arr Band"
+    },
+    "intent": {
+      "$ref": "#/$defs/Intent"
+    },
+    "priority": {
+      "$ref": "#/$defs/Priority"
+    },
+    "sentiment": {
+      "$ref": "#/$defs/Sentiment"
+    },
+    "churn_risk": {
+      "$ref": "#/$defs/ChurnRisk"
+    },
+    "entities": {
+      "items": {
+        "$ref": "#/$defs/Entity"
+      },
+      "maxItems": 20,
+      "title": "Entities",
+      "type": "array"
+    },
+    "steps_already_attempted": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 20,
+      "title": "Steps Already Attempted",
+      "type": "array"
+    },
+    "articles_already_checked": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 20,
+      "title": "Articles Already Checked",
+      "type": "array"
+    },
+    "rationale": {
+      "maxLength": 2000,
+      "title": "Rationale",
+      "type": "string"
+    },
+    "escalation_reasons": {
+      "items": {
+        "$ref": "#/$defs/EscalationReason"
+      },
+      "maxItems": 10,
+      "minItems": 1,
+      "title": "Escalation Reasons",
+      "type": "array"
+    },
+    "open_questions": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 10,
+      "title": "Open Questions",
+      "type": "array"
+    },
+    "customer_facing_expectation": {
+      "maxLength": 2000,
+      "title": "Customer Facing Expectation",
+      "type": "string"
+    },
+    "ticket_context_ref": {
+      "$ref": "#/$defs/TicketContextRef"
+    },
+    "edited_by": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Edited By"
+    },
+    "version": {
+      "minimum": 1,
+      "title": "Version",
+      "type": "integer"
+    },
+    "reproduction_steps": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 20,
+      "title": "Reproduction Steps",
+      "type": "array"
+    },
+    "expected_behavior": {
+      "anyOf": [
+        {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Expected Behavior"
+    },
+    "actual_behavior": {
+      "anyOf": [
+        {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Actual Behavior"
+    },
+    "error_codes": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 20,
+      "title": "Error Codes",
+      "type": "array"
+    },
+    "environment": {
+      "$ref": "#/$defs/EnvironmentInfo"
+    },
+    "customer_impact": {
+      "$ref": "#/$defs/CustomerImpact"
+    },
+    "first_seen_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "First Seen At"
+    },
+    "linked_incident_id": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Linked Incident Id"
+    },
+    "severity_suggestion": {
+      "enum": [
+        "sev1",
+        "sev2",
+        "sev3",
+        "sev4"
+      ],
+      "title": "Severity Suggestion",
+      "type": "string"
+    }
+  },
+  "required": [
+    "handoff_id",
+    "ticket_id",
+    "target",
+    "variant",
+    "one_line_summary",
+    "customer_problem",
+    "customer_goal",
+    "account_tier",
+    "intent",
+    "priority",
+    "sentiment",
+    "churn_risk",
+    "entities",
+    "steps_already_attempted",
+    "articles_already_checked",
+    "rationale",
+    "escalation_reasons",
+    "customer_facing_expectation",
+    "ticket_context_ref",
+    "version",
+    "environment",
+    "customer_impact",
+    "severity_suggestion"
+  ],
+  "title": "EngineeringHandoff",
+  "type": "object"
+}
