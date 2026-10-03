@@ -22,7 +22,7 @@ lsh: # candidate generation only; every candidate is verified with exact Jaccard
 embedding: # C3 (optional): skipped cleanly when sentence-transformers is absent or unpinned
   enabled: true
   model: BAAI/bge-small-en-v1.5 # leakage-only embedder, independent of the retrieval embedder
-  revision: null # TODO(P1.26): pin the HF commit SHA before the first real run
+  revision: 5c38ec7c405ec4b44b94cc5a9bb96e735b38267a # main on 2026-09-28 (HF API); MIT
   sentence_transformers_version: "6.1.0" # not in ml/uv.lock (it would pull torch); install it
   # into the environment that runs the check, e.g. `uv pip install sentence-transformers==6.1.0`
   tau: 0.92 # starting value, calibrated by protocol D5

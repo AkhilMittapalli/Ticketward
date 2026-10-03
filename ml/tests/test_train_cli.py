@@ -27,9 +27,13 @@ def repo(tmp_path: Path, paths: RepoPaths, train_paths: Any) -> Any:
     return type(train_paths)(root, train_paths.sandbox)
 
 
-def _config(tmp_path: Path, paths: RepoPaths, name: str, **data: Any) -> Path:
+def _config(
+    tmp_path: Path, paths: RepoPaths, name: str, *, base_revision: str | None = None, **data: Any
+) -> Path:
     document = yaml.safe_load((paths.configs_dir / name).read_text(encoding="utf-8"))
     document["data"].update(data)
+    if base_revision is not None:  # e.g. "<verify>" to exercise the unpinned path
+        document["base"]["revision"] = base_revision
     target = tmp_path / name
     target.write_text(yaml.safe_dump(document, sort_keys=False), encoding="utf-8")
     return target
@@ -50,7 +54,9 @@ def test_sft_dry_run_validates_config_and_data_without_torch(
     write_train_data: Callable[..., Path],
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    config = _config(tmp_path, paths, "sft_qwen35_2b.yaml", prompt_format=None)
+    config = _config(
+        tmp_path, paths, "sft_qwen35_2b.yaml", base_revision="<verify>", prompt_format=None
+    )
     argv = [
         "--config",
         str(config),
@@ -109,7 +115,9 @@ def test_sft_dry_run_checks_the_prompt_format_file(
     assert summary["sft"]["prompt_format"]["status"] == "missing"
     assert "does not exist" in summary["blockers"][0]
     fmt = derive_prompt_format(
-        make_sft_tokenizer(), base_model="Qwen/Qwen3.5-2B", base_revision="<verify>"
+        make_sft_tokenizer(),
+        base_model="Qwen/Qwen3.5-2B",
+        base_revision=load_run_config(Path(config))[0].base.revision,
     )
     write_prompt_format(repo.root / FORMAT_FILE, fmt)
     code, summary, _ = _run(base, repo, capsys)
@@ -162,7 +170,9 @@ def test_refusals_happen_before_any_platform_work(
     write_train_data: Callable[..., Path],
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    config = str(_config(tmp_path, paths, "sft_qwen35_2b.yaml", prompt_format=None))
+    config = str(
+        _config(tmp_path, paths, "sft_qwen35_2b.yaml", base_revision="<verify>", prompt_format=None)
+    )
     data = str(write_train_data())
     code, _, err = _run(["--config", config, "--seed", "42", "--allow-unverified"], repo, capsys)
     assert code == EXIT_USAGE

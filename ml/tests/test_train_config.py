@@ -246,7 +246,8 @@ def test_load_errors(tmp_path: Path) -> None:
 
 
 def test_check_runnable(paths: RepoPaths) -> None:
-    cfg = _sft(paths)
+    cfg = parse_run_config(_mutated(paths, "sft_qwen35_2b.yaml", {"base.revision": "<verify>"}))
+    assert isinstance(cfg, SFTRunConfig)
     assert unverified_fields(cfg) == ["base.revision", "hub.checkpoint_repo"]
     with pytest.raises(ConfigError, match="not one of the configured seeds"):
         check_runnable(cfg, 7, allow_unverified=True, needs_hub=False)

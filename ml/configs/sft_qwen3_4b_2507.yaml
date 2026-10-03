@@ -12,7 +12,7 @@ version: sft.v1
 name: sft-qwen3-4b-2507
 base:
   repo: Qwen/Qwen3-4B-Instruct-2507
-  revision: <verify> # bakeoff.yaml candidate qwen3-4b-2507 hf_revision
+  revision: cdbee75f17c01a7cc42f958dc650907174af0554 # main on 2026-09-28 (HF API); license re-checked
   license: apache-2.0
   params_b: 4.0
 model_class: AutoModelForCausalLM # pure-text transformer, non-thinking only

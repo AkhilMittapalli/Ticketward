@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -65,7 +66,7 @@ def test_committed_config_lists_the_a02_candidates(paths: RepoPaths) -> None:
         assert candidate.ollama_model == f"tw-bakeoff-{candidate.id}"
         assert (candidate.quantization, candidate.imatrix) == ("Q4_K_M", False)
         assert candidate.verify_before_run is True
-        assert candidate.hf_revision == "<verify>"
+        assert re.fullmatch(r"[0-9a-f]{40}", candidate.hf_revision), candidate.id  # pinned
         assert candidate.ollama_digest is None
         assert candidate.prompt_format == f"ml/configs/prompt_formats/{candidate.id}.json"
     assert "Qwen/Qwen2.5-3B-Instruct" not in {c.hf_repo for c in config.candidates}
@@ -113,7 +114,10 @@ def _first(document: dict[str, Any], **changes: Any) -> None:
         (lambda d: _first(d, lic=0.5), "has Lic 1.0"),
         (lambda d: _first(d, finetune_method="qlora_nf4"), "lora_fp16"),
         (lambda d: _first(d, hf_revision="main"), "40-hex commit SHA"),
-        (lambda d: _first(d, verify_before_run=False), "requires verify_before_run"),
+        (
+            lambda d: _first(d, verify_before_run=False, hf_revision="<verify>"),
+            "requires verify_before_run",
+        ),
         (lambda d: _first(d, quantization="Q8_0"), "quantization"),
         (lambda d: d["request"]["options"].update(temperature=0.7), "temperature must be 0"),
         (lambda d: d["request"]["options"].pop("num_ctx"), "num_ctx"),

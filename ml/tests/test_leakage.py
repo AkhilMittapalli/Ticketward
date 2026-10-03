@@ -206,7 +206,7 @@ def test_load_embedder_skips_cleanly(cfg: LeakageConfig, monkeypatch: pytest.Mon
     disabled, status = load_embedder(cfg.embedding.model_copy(update={"enabled": False}))
     assert disabled is None
     assert status["reason"] == "disabled in config"
-    unpinned, status = load_embedder(cfg.embedding)
+    unpinned, status = load_embedder(cfg.embedding.model_copy(update={"revision": None}))
     assert unpinned is None
     assert status["reason"] == "model revision not pinned"
     monkeypatch.setitem(sys.modules, "sentence_transformers", None)

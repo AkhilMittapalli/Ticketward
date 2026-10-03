@@ -368,7 +368,7 @@ def test_stop_ids_and_prompt_format_checks(
     tokenizer = make_sft_tokenizer()
     assert stop_token_ids(tokenizer, ["<|im_end|>", "<|endoftext|>", "multi token stop"]) == [2, 3]
     cfg = _cfg(paths)
-    fmt = derive_prompt_format(tokenizer, base_model=cfg.base.repo, base_revision="<verify>")
+    fmt = derive_prompt_format(tokenizer, base_model=cfg.base.repo, base_revision=cfg.base.revision)
     assert fmt.template_kwargs == {"add_generation_prompt": True, **TEMPLATE_KWARGS}
     assert prompt_format_problems(fmt, cfg, chat_template_sha256=None) == []
     assert prompt_format_problems(fmt, cfg, chat_template_sha256=fmt.chat_template_sha256) == []
@@ -431,7 +431,7 @@ def test_prepare_data_builds_rows_and_manifest(
 ) -> None:
     cfg = _cfg(paths)
     tokenizer = make_sft_tokenizer()
-    fmt = derive_prompt_format(tokenizer, base_model=cfg.base.repo, base_revision="<verify>")
+    fmt = derive_prompt_format(tokenizer, base_model=cfg.base.repo, base_revision=cfg.base.revision)
     # model_copy skips validation: the character-level fake tokenizer needs a larger budget
     long_budget = cfg.model_copy(
         update={"train": cfg.train.model_copy(update={"max_length": 100_000})}

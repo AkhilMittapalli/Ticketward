@@ -13,7 +13,7 @@ version: encoder.v1
 name: e2-modernbert-base
 base:
   repo: answerdotai/ModernBERT-base
-  revision: <verify> # pin the commit SHA before the E2 runs
+  revision: 8949b909ec900327062f0ebf497f51aef5e6f0c8 # main on 2026-09-28 (HF API); license re-checked
   license: apache-2.0
   params_b: 0.149 # 149M (model card)
 trust_remote_code: false

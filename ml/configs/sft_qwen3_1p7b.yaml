@@ -11,7 +11,7 @@ version: sft.v1
 name: sft-qwen3-1.7b
 base:
   repo: Qwen/Qwen3-1.7B
-  revision: <verify> # bakeoff.yaml candidate qwen3-1.7b hf_revision
+  revision: 70d244cc86ccca08cf5af4e1e306ecf908b1ad5e # main on 2026-09-28 (HF API); license re-checked
   license: apache-2.0
   params_b: 1.7
 model_class: AutoModelForCausalLM # pure-text transformer

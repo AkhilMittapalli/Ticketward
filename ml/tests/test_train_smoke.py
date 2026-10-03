@@ -5,6 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+import yaml
 
 from tw_ml.datagen.paths import RepoPaths
 from tw_ml.train.sft import LossChoice
@@ -129,12 +130,15 @@ def test_verdict() -> None:
     assert not passed([*checks, Check(7, "c", "fail", "")])
 
 
+UNPINNED = "<sft_qwen35_2b.yaml with base.revision <verify>>"
+
+
 @pytest.mark.parametrize(
     ("argv", "fragment"),
     [
         (["--config", "encoder_modernbert.yaml"], "for SFT configs"),
         (["--config", "sft_qwen35_2b.yaml", "--steps", "1"], "at least 2"),
-        (["--config", "sft_qwen35_2b.yaml"], "--allow-unverified"),
+        (["--config", UNPINNED], "--allow-unverified"),
         (
             ["--config", "sft_qwen35_2b.yaml", "--seed", "7", "--allow-unverified"],
             "configured seeds",
@@ -143,12 +147,23 @@ def test_verdict() -> None:
     ],
 )
 def test_cli_refusals(
-    paths: RepoPaths, capsys: pytest.CaptureFixture[str], argv: list[str], fragment: str
+    paths: RepoPaths,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    argv: list[str],
+    fragment: str,
 ) -> None:
-    argv = [
-        str(paths.configs_dir / argv[1]) if a == argv[1] and i == 1 else a
-        for i, a in enumerate(argv)
-    ]
+    def resolve(name: str) -> str:
+        if name != UNPINNED:
+            return str(paths.configs_dir / name)
+        source = paths.configs_dir / "sft_qwen35_2b.yaml"
+        document = yaml.safe_load(source.read_text(encoding="utf-8"))
+        document["base"]["revision"] = "<verify>"
+        target = tmp_path / "sft_unpinned.yaml"
+        target.write_text(yaml.safe_dump(document, sort_keys=False), encoding="utf-8")
+        return str(target)
+
+    argv = [resolve(a) if i == 1 else a for i, a in enumerate(argv)]
     assert main(argv, paths=paths) == EXIT_USAGE
     assert fragment in capsys.readouterr().err
 
