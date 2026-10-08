@@ -21,7 +21,10 @@
 import json
 import os
 import re
+import threading
+import time as _time
 from collections.abc import Callable, Iterator, Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
@@ -98,6 +101,9 @@ QUARANTINE_FILE: Final = "quarantine.jsonl"
 COSTS_FILE: Final = "costs.jsonl"
 CHECKPOINT_FILE: Final = "checkpoint.json"
 DRY_RUN_DIR: Final = "dry_run"
+DEFAULT_WORKERS: Final = 6
+CHECKPOINT_RETRY_ATTEMPTS: Final = 5
+CHECKPOINT_RETRY_DELAY_S: Final = 0.5
 TERMS_DATE: Final = re.compile(r"(\d{4}-\d{2}-\d{2})\.md$")
 RAW_OUTPUT_LIMIT: Final = 20_000
 HISTORY_GAP_HOURS: Final = 6
@@ -391,8 +397,11 @@ def read_jsonl(path: Path) -> Iterator[dict[str, Any]]:
                 yield json.loads(line)
 
 
+_file_lock = threading.Lock()
+
+
 def append_jsonl(path: Path, row: Mapping[str, object] | str) -> None:
-    """Append one JSON line and flush it to disk.
+    """Append one JSON line and flush it to disk (thread-safe).
 
     Args:
         path: File (created with its directory when missing).
@@ -400,7 +409,7 @@ def append_jsonl(path: Path, row: Mapping[str, object] | str) -> None:
     """
     path.parent.mkdir(parents=True, exist_ok=True)
     line = row if isinstance(row, str) else json.dumps(row, sort_keys=True, ensure_ascii=False)
-    with path.open("a", encoding="utf-8", newline="\n") as handle:
+    with _file_lock, path.open("a", encoding="utf-8", newline="\n") as handle:
         handle.write(line + "\n")
         handle.flush()
         os.fsync(handle.fileno())
@@ -445,7 +454,7 @@ def ledger_total(root: Path) -> Decimal:
 
 
 def write_checkpoint(out_dir: Path, payload: Mapping[str, object]) -> None:
-    """Atomically replace ``checkpoint.json``.
+    """Atomically replace ``checkpoint.json`` (thread-safe, OneDrive-resilient).
 
     Args:
         out_dir: Split output directory.
@@ -453,8 +462,17 @@ def write_checkpoint(out_dir: Path, payload: Mapping[str, object]) -> None:
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     temp = out_dir / f"{CHECKPOINT_FILE}.tmp"
-    temp.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    temp.replace(out_dir / CHECKPOINT_FILE)
+    text = json.dumps(payload, indent=2, sort_keys=True) + "\n"
+    with _file_lock:
+        temp.write_text(text, encoding="utf-8")
+        for attempt in range(CHECKPOINT_RETRY_ATTEMPTS):
+            try:
+                temp.replace(out_dir / CHECKPOINT_FILE)
+                return
+            except PermissionError:
+                if attempt == CHECKPOINT_RETRY_ATTEMPTS - 1:
+                    raise
+                _time.sleep(CHECKPOINT_RETRY_DELAY_S * (attempt + 1))
 
 
 def check_plan_matches(out_dir: Path, plan: GenerationPlan) -> None:
@@ -572,11 +590,15 @@ class CellJob:
     clock: Clock
 
 
+_budget_lock = threading.Lock()
+
+
 def run_generation(
     ctx: GenerationContext,
     options: RunOptions,
     provider: ChatProvider | None,
     clock: Clock = utc_now,
+    workers: int = DEFAULT_WORKERS,
 ) -> RunSummary:
     """Generate (or dry-run) the next ``n`` cells of a split.
 
@@ -585,6 +607,7 @@ def run_generation(
         options: Run options.
         provider: Chat provider (None only for a dry run).
         clock: Current time (injectable for tests).
+        workers: Concurrent API workers (1 = sequential).
 
     Returns:
         The run summary.
@@ -620,6 +643,28 @@ def run_generation(
         total_cap=total_cap,
         spent_before=spent_before,
     )
+    if workers <= 1:
+        _run_sequential(ctx, cells, provider, budget, out_dir, clock, plan, options, summary, state)
+    else:
+        _run_concurrent(
+            ctx, cells, provider, budget, out_dir, clock, plan, options, summary, state, workers
+        )
+    summary.spent_usd = budget.spent_run
+    return summary
+
+
+def _run_sequential(  # noqa: PLR0913, PLR0917
+    ctx: GenerationContext,
+    cells: list[GenerationCell],
+    provider: ChatProvider,
+    budget: Budget,
+    out_dir: Path,
+    clock: Clock,
+    plan: GenerationPlan,
+    options: RunOptions,
+    summary: RunSummary,
+    state: RunState,
+) -> None:
     for cell in cells:
         summary.processed += 1
         job = CellJob(ctx, cell, provider, budget, out_dir, clock)
@@ -628,14 +673,56 @@ def run_generation(
         if reason is not None:
             summary.stop_reason = reason
             break
-    summary.spent_usd = budget.spent_run
-    return summary
+
+
+def _run_concurrent(  # noqa: PLR0913, PLR0917
+    ctx: GenerationContext,
+    cells: list[GenerationCell],
+    provider: ChatProvider,
+    budget: Budget,
+    out_dir: Path,
+    clock: Clock,
+    plan: GenerationPlan,
+    options: RunOptions,
+    summary: RunSummary,
+    state: RunState,
+    workers: int,
+) -> None:
+    stop_event = threading.Event()
+
+    def process_cell(cell: GenerationCell) -> StopReason | None:
+        if stop_event.is_set():
+            return None
+        job = CellJob(ctx, cell, provider, budget, out_dir, clock)
+        reason = _generate_cell(job, state, summary)
+        if reason is not None:
+            stop_event.set()
+        return reason
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = {pool.submit(process_cell, cell): cell for cell in cells}
+        for future in as_completed(futures):
+            summary.processed += 1
+            reason = future.result()
+            write_checkpoint(out_dir, _checkpoint(plan, options, summary, state, budget, clock))
+            if reason is not None:
+                summary.stop_reason = reason
+                stop_event.set()
+                pool.shutdown(wait=False, cancel_futures=True)
+                break
+
+
+_state_lock = threading.Lock()
 
 
 def _generate_cell(job: CellJob, state: RunState, summary: RunSummary) -> StopReason | None:
     cell_id = job.cell.cell_id
-    while state.tries(cell_id) < job.ctx.config.max_attempts_per_cell:
-        attempt_no = state.tries(cell_id) + 1
+    while True:
+        with _state_lock:
+            if state.tries(cell_id) >= job.ctx.config.max_attempts_per_cell:
+                return None
+            attempt_no = state.tries(cell_id) + 1
+            state.attempts[cell_id] = attempt_no
         try:
             attempt = attempt_cell(job)
         except BudgetStopError:
@@ -645,15 +732,15 @@ def _generate_cell(job: CellJob, state: RunState, summary: RunSummary) -> StopRe
             return "auth"
         except ProviderError as exc:
             attempt = Attempt(stage="provider", error=str(exc))
-        state.attempts[cell_id] = attempt_no
         if attempt.record is not None:
             append_jsonl(job.out_dir / RECORDS_FILE, attempt.record.model_dump_json())
-            state.accepted.add(cell_id)
-            summary.accepted += 1
+            with _state_lock:
+                state.accepted.add(cell_id)
+                summary.accepted += 1
             return None
         _quarantine(job.out_dir, job.cell, attempt_no, attempt)
-        summary.quarantined += 1
-    return None
+        with _state_lock:
+            summary.quarantined += 1
 
 
 def attempt_cell(job: CellJob) -> Attempt:
@@ -692,11 +779,13 @@ def _call(job: CellJob, request: ChatRequest) -> str:
     estimate = ctx.prices.estimate(
         request.prompt_chars(), request.params.max_tokens, provider.host, provider.api_model_id
     )
-    if not job.budget.allows(estimate):
-        raise BudgetStopError
+    with _budget_lock:
+        if not job.budget.allows(estimate):
+            raise BudgetStopError
     result = provider.complete(request)
     cost = ctx.prices.cost(result.usage, provider.host, provider.api_model_id)
-    job.budget.charge(cost)
+    with _budget_lock:
+        job.budget.charge(cost)
     append_jsonl(
         job.out_dir / COSTS_FILE,
         {
@@ -766,7 +855,10 @@ def build_pa_attempt(job: CellJob, raw: str) -> Attempt:
         output = PAOutput.model_validate_json(payload, strict=True)
     except (OutputParseError, ValidationError) as exc:
         return Attempt(findings=[_schema_finding(exc, "proposed_labels")], stage="pa", raw=raw)
-    ticket, mask = _ticket(job, output.subject, output.message, output.previous_messages)
+    try:
+        ticket, mask = _ticket(job, output.subject, output.message, output.previous_messages)
+    except ValidationError as exc:
+        return Attempt(findings=[_schema_finding(exc, "ticket")], stage="pa", raw=raw)
     labels = _mask_labels(output.proposed_labels, mask.replacements)
     attempt = _finish(job, ticket, labels, mask, basis="llm_proposal", self_check=output.self_check)
     if wrapped:
@@ -790,7 +882,10 @@ def build_pb_attempt(job: CellJob, scenario: ScenarioFacts, raw: str) -> Attempt
         message = PBMessage.model_validate_json(extract_json(raw)[0], strict=True)
     except (OutputParseError, ValidationError) as exc:
         return Attempt(findings=[_schema_finding(exc, "message")], stage="pb2", raw=raw)
-    ticket, mask = _ticket(job, message.subject, message.message, message.previous_messages)
+    try:
+        ticket, mask = _ticket(job, message.subject, message.message, message.previous_messages)
+    except ValidationError as exc:
+        return Attempt(findings=[_schema_finding(exc, "ticket")], stage="pb2", raw=raw)
     labels = scenario_labels(job.cell, ticket, job.ctx.rules, job.ctx.facts)
     attempt = _finish(job, ticket, labels, mask, basis="scenario_spec", scenario=scenario)
     attempt.stage, attempt.raw = "pb2", raw

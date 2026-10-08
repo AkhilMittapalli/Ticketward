@@ -79,7 +79,8 @@ def _run(
     provider = fake_provider(responder, family)
     provider.failures.extend(kw.pop("failures", []))
     summary = run_generation(
-        ctx, _options(tmp_path, ctx.split, family, **kw), provider, clock=_clock
+        ctx, _options(tmp_path, ctx.split, family, **kw), provider, clock=_clock,
+        workers=1,
     )
     return summary, provider
 

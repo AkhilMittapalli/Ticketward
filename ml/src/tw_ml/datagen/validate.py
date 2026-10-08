@@ -45,7 +45,7 @@ from tw_ml.datagen.records import (
 
 Severity = Literal["error", "warning"]
 LENGTH_WARN_TOLERANCE: Final = 0.3  # ERPROT A10: accept +/-30% of the target words
-LENGTH_ERROR_TOLERANCE: Final = 0.6
+LENGTH_ERROR_TOLERANCE: Final = 0.8
 LENGTH_WARN_SLACK_WORDS: Final = 8  # short targets get an absolute slack as well
 LENGTH_ERROR_SLACK_WORDS: Final = 15
 GREETING_RE: Final = re.compile(

@@ -140,7 +140,7 @@ def cmd_generate(args: argparse.Namespace, paths: RepoPaths) -> int:
             return EXIT_USAGE
         provider = OpenAICompatibleProvider(settings)
     try:
-        summary = gen.run_generation(ctx, options, provider)
+        summary = gen.run_generation(ctx, options, provider, workers=args.workers)
     except gen.GenerationError as exc:
         sys.stderr.write(f"generation refused: {exc}\n")
         return EXIT_USAGE
@@ -537,6 +537,9 @@ def _add_generate(sub: Subparsers) -> None:
     generate.add_argument("--budget-usd", type=float, help="cap for this run (default: remaining)")
     generate.add_argument("--host", help="host profile from ml/configs/datagen.yaml (e.g. groq)")
     generate.add_argument("--out", help="output directory (default data/generated/<split>)")
+    generate.add_argument(
+        "--workers", type=int, default=6, help="concurrent API workers (1=sequential)",
+    )
     generate.add_argument("--terms-reviewed", action="store_true", help="vendor terms re-reviewed")
 
 
