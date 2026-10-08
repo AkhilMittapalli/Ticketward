@@ -1,0 +1,609 @@
+{
+  "_metadata": {
+    "version": "1.0.0",
+    "created_at": "2026-10-08",
+    "description": "60 fictional Taskmoor accounts for seed data. All company names and CSM owners are fictional."
+  },
+  "accounts": [
+    {
+      "account_id": "acct_A3b7",
+      "company_name": "Veltrex Solutions",
+      "plan": "free",
+      "arr_band": "<10k",
+      "region": "us",
+      "seats": 2,
+      "health_score": 82,
+      "csm_owner": null
+    },
+    {
+      "account_id": "acct_B9k2",
+      "company_name": "Qorvane Analytics",
+      "plan": "free",
+      "arr_band": "<10k",
+      "region": "eu",
+      "seats": 1,
+      "health_score": 55,
+      "csm_owner": null
+    },
+    {
+      "account_id": "acct_C4m1",
+      "company_name": "Pinnoch Digital",
+      "plan": "free",
+      "arr_band": "<10k",
+      "region": "apac",
+      "seats": 3,
+      "health_score": 91,
+      "csm_owner": null
+    },
+    {
+      "account_id": "acct_D7f5",
+      "company_name": "Trellum Works",
+      "plan": "free",
+      "arr_band": "<10k",
+      "region": "us",
+      "seats": 5,
+      "health_score": 28,
+      "csm_owner": null
+    },
+    {
+      "account_id": "acct_E2j8",
+      "company_name": "Caldiro Labs",
+      "plan": "free",
+      "arr_band": "<10k",
+      "region": "eu",
+      "seats": 1,
+      "health_score": 73,
+      "csm_owner": null
+    },
+    {
+      "account_id": "acct_F6n3",
+      "company_name": "Brintly Media",
+      "plan": "free",
+      "arr_band": "<10k",
+      "region": "apac",
+      "seats": 4,
+      "health_score": 44,
+      "csm_owner": null
+    },
+    {
+      "account_id": "acct_G1p9",
+      "company_name": "Norvik Creative",
+      "plan": "free",
+      "arr_band": "<10k",
+      "region": "us",
+      "seats": 2,
+      "health_score": 67,
+      "csm_owner": null
+    },
+    {
+      "account_id": "acct_H8r4",
+      "company_name": "Zenthari Corp",
+      "plan": "free",
+      "arr_band": "<10k",
+      "region": "eu",
+      "seats": 3,
+      "health_score": 15,
+      "csm_owner": null
+    },
+    {
+      "account_id": "acct_J5t6",
+      "company_name": "Dravox Hosting",
+      "plan": "free",
+      "arr_band": "<10k",
+      "region": "apac",
+      "seats": 1,
+      "health_score": 88,
+      "csm_owner": null
+    },
+    {
+      "account_id": "acct_K3v2",
+      "company_name": "Lufara Designs",
+      "plan": "free",
+      "arr_band": "<10k",
+      "region": "us",
+      "seats": 5,
+      "health_score": 36,
+      "csm_owner": null
+    },
+    {
+      "account_id": "acct_L9w7",
+      "company_name": "Pelorix Tech",
+      "plan": "free",
+      "arr_band": "<10k",
+      "region": "eu",
+      "seats": 2,
+      "health_score": 61,
+      "csm_owner": null
+    },
+    {
+      "account_id": "acct_M2x1",
+      "company_name": "Gryphex Consulting",
+      "plan": "free",
+      "arr_band": "<10k",
+      "region": "apac",
+      "seats": 4,
+      "health_score": 79,
+      "csm_owner": null
+    },
+    {
+      "account_id": "acct_N6y5",
+      "company_name": "Tavren Systems",
+      "plan": "free",
+      "arr_band": "<10k",
+      "region": "us",
+      "seats": 1,
+      "health_score": 8,
+      "csm_owner": null
+    },
+    {
+      "account_id": "acct_P4z8",
+      "company_name": "Miroval Apps",
+      "plan": "free",
+      "arr_band": "<10k",
+      "region": "eu",
+      "seats": 3,
+      "health_score": 52,
+      "csm_owner": null
+    },
+    {
+      "account_id": "acct_Q8a3",
+      "company_name": "Solvanta Group",
+      "plan": "free",
+      "arr_band": "<10k",
+      "region": "apac",
+      "seats": 2,
+      "health_score": 95,
+      "csm_owner": null
+    },
+    {
+      "account_id": "acct_R1c6",
+      "company_name": "Nexivar Software",
+      "plan": "starter",
+      "arr_band": "<10k",
+      "region": "us",
+      "seats": 8,
+      "health_score": 71,
+      "csm_owner": null
+    },
+    {
+      "account_id": "acct_S7d9",
+      "company_name": "Cortivex Data",
+      "plan": "starter",
+      "arr_band": "10k-50k",
+      "region": "eu",
+      "seats": 22,
+      "health_score": 84,
+      "csm_owner": null
+    },
+    {
+      "account_id": "acct_T3e2",
+      "company_name": "Welden Platforms",
+      "plan": "starter",
+      "arr_band": "<10k",
+      "region": "apac",
+      "seats": 5,
+      "health_score": 47,
+      "csm_owner": null
+    },
+    {
+      "account_id": "acct_U5g4",
+      "company_name": "Forbian Analytics",
+      "plan": "starter",
+      "arr_band": "10k-50k",
+      "region": "us",
+      "seats": 35,
+      "health_score": 63,
+      "csm_owner": null
+    },
+    {
+      "account_id": "acct_V9h7",
+      "company_name": "Quilnex Services",
+      "plan": "starter",
+      "arr_band": "<10k",
+      "region": "eu",
+      "seats": 3,
+      "health_score": 22,
+      "csm_owner": null
+    },
+    {
+      "account_id": "acct_W2j1",
+      "company_name": "Brellion Tech",
+      "plan": "starter",
+      "arr_band": "10k-50k",
+      "region": "apac",
+      "seats": 18,
+      "health_score": 90,
+      "csm_owner": null
+    },
+    {
+      "account_id": "acct_X6k5",
+      "company_name": "Turova Digital",
+      "plan": "starter",
+      "arr_band": "10k-50k",
+      "region": "us",
+      "seats": 40,
+      "health_score": 56,
+      "csm_owner": null
+    },
+    {
+      "account_id": "acct_Y4m8",
+      "company_name": "Halverin Media",
+      "plan": "starter",
+      "arr_band": "<10k",
+      "region": "eu",
+      "seats": 7,
+      "health_score": 33,
+      "csm_owner": null
+    },
+    {
+      "account_id": "acct_Z8n3",
+      "company_name": "Oxpera Labs",
+      "plan": "starter",
+      "arr_band": "10k-50k",
+      "region": "apac",
+      "seats": 28,
+      "health_score": 76,
+      "csm_owner": null
+    },
+    {
+      "account_id": "acct_Ab2p",
+      "company_name": "Fenwick Hosting",
+      "plan": "starter",
+      "arr_band": "<10k",
+      "region": "us",
+      "seats": 10,
+      "health_score": 41,
+      "csm_owner": null
+    },
+    {
+      "account_id": "acct_Bc6q",
+      "company_name": "Kaelrix Solutions",
+      "plan": "starter",
+      "arr_band": "10k-50k",
+      "region": "eu",
+      "seats": 45,
+      "health_score": 87,
+      "csm_owner": null
+    },
+    {
+      "account_id": "acct_Cd1r",
+      "company_name": "Valtro Systems",
+      "plan": "starter",
+      "arr_band": "10k-50k",
+      "region": "apac",
+      "seats": 15,
+      "health_score": 12,
+      "csm_owner": null
+    },
+    {
+      "account_id": "acct_De5s",
+      "company_name": "Norbyte Apps",
+      "plan": "starter",
+      "arr_band": "<10k",
+      "region": "us",
+      "seats": 6,
+      "health_score": 68,
+      "csm_owner": null
+    },
+    {
+      "account_id": "acct_Ef9t",
+      "company_name": "Plexara Cloud",
+      "plan": "starter",
+      "arr_band": "10k-50k",
+      "region": "eu",
+      "seats": 32,
+      "health_score": 59,
+      "csm_owner": null
+    },
+    {
+      "account_id": "acct_Fg3u",
+      "company_name": "Rendivo Corp",
+      "plan": "starter",
+      "arr_band": "<10k",
+      "region": "apac",
+      "seats": 12,
+      "health_score": 93,
+      "csm_owner": null
+    },
+    {
+      "account_id": "acct_Gh7v",
+      "company_name": "Arkonis Industries",
+      "plan": "business",
+      "arr_band": "50k-250k",
+      "region": "us",
+      "seats": 220,
+      "health_score": 85,
+      "csm_owner": "Dana Whitfield"
+    },
+    {
+      "account_id": "acct_Hj2w",
+      "company_name": "Stellavox Enterprises",
+      "plan": "business",
+      "arr_band": "10k-50k",
+      "region": "eu",
+      "seats": 45,
+      "health_score": 72,
+      "csm_owner": "Marcus Reyne"
+    },
+    {
+      "account_id": "acct_Jk6x",
+      "company_name": "Crestmore Logistics",
+      "plan": "business",
+      "arr_band": "50k-250k",
+      "region": "apac",
+      "seats": 310,
+      "health_score": 38,
+      "csm_owner": "Priya Nandor"
+    },
+    {
+      "account_id": "acct_Km1y",
+      "company_name": "Parvella Networks",
+      "plan": "business",
+      "arr_band": "10k-50k",
+      "region": "us",
+      "seats": 78,
+      "health_score": 64,
+      "csm_owner": "Dana Whitfield"
+    },
+    {
+      "account_id": "acct_Ln5z",
+      "company_name": "Trivex Manufacturing",
+      "plan": "business",
+      "arr_band": "50k-250k",
+      "region": "eu",
+      "seats": 185,
+      "health_score": 91,
+      "csm_owner": "Marcus Reyne"
+    },
+    {
+      "account_id": "acct_Mp9a",
+      "company_name": "Corizan Health",
+      "plan": "business",
+      "arr_band": "10k-50k",
+      "region": "apac",
+      "seats": 55,
+      "health_score": 19,
+      "csm_owner": "Priya Nandor"
+    },
+    {
+      "account_id": "acct_Nq3b",
+      "company_name": "Helwick Financial",
+      "plan": "business",
+      "arr_band": "50k-250k",
+      "region": "us",
+      "seats": 410,
+      "health_score": 77,
+      "csm_owner": "Jordan Callister"
+    },
+    {
+      "account_id": "acct_Or7c",
+      "company_name": "Drakonex Shipping",
+      "plan": "business",
+      "arr_band": "50k-250k",
+      "region": "eu",
+      "seats": 275,
+      "health_score": 50,
+      "csm_owner": "Marcus Reyne"
+    },
+    {
+      "account_id": "acct_Ps2d",
+      "company_name": "Talmeri Resources",
+      "plan": "business",
+      "arr_band": "10k-50k",
+      "region": "apac",
+      "seats": 92,
+      "health_score": 83,
+      "csm_owner": "Priya Nandor"
+    },
+    {
+      "account_id": "acct_Qt6e",
+      "company_name": "Vorilex Biotech",
+      "plan": "business",
+      "arr_band": "50k-250k",
+      "region": "us",
+      "seats": 150,
+      "health_score": 25,
+      "csm_owner": "Dana Whitfield"
+    },
+    {
+      "account_id": "acct_Ru1f",
+      "company_name": "Gallantis Group",
+      "plan": "business",
+      "arr_band": "10k-50k",
+      "region": "eu",
+      "seats": 38,
+      "health_score": 69,
+      "csm_owner": "Jordan Callister"
+    },
+    {
+      "account_id": "acct_Sv5g",
+      "company_name": "Meridex Retail",
+      "plan": "business",
+      "arr_band": "50k-250k",
+      "region": "apac",
+      "seats": 340,
+      "health_score": 96,
+      "csm_owner": "Priya Nandor"
+    },
+    {
+      "account_id": "acct_Tw9h",
+      "company_name": "Claronix Telecom",
+      "plan": "business",
+      "arr_band": "50k-250k",
+      "region": "us",
+      "seats": 198,
+      "health_score": 42,
+      "csm_owner": "Jordan Callister"
+    },
+    {
+      "account_id": "acct_Ux3j",
+      "company_name": "Brevano Partners",
+      "plan": "business",
+      "arr_band": "10k-50k",
+      "region": "eu",
+      "seats": 65,
+      "health_score": 58,
+      "csm_owner": "Marcus Reyne"
+    },
+    {
+      "account_id": "acct_Vy7k",
+      "company_name": "Ophelix Education",
+      "plan": "business",
+      "arr_band": "50k-250k",
+      "region": "apac",
+      "seats": 125,
+      "health_score": 31,
+      "csm_owner": "Priya Nandor"
+    },
+    {
+      "account_id": "acct_Wz2m",
+      "company_name": "Zentrova Global",
+      "plan": "enterprise",
+      "arr_band": ">250k",
+      "region": "us",
+      "seats": 1200,
+      "health_score": 94,
+      "csm_owner": "Jordan Callister"
+    },
+    {
+      "account_id": "acct_Xa6n",
+      "company_name": "Korellian Defense",
+      "plan": "enterprise",
+      "arr_band": ">250k",
+      "region": "eu",
+      "seats": 850,
+      "health_score": 78,
+      "csm_owner": "Marcus Reyne"
+    },
+    {
+      "account_id": "acct_Yb1p",
+      "company_name": "Trevalis Energy",
+      "plan": "enterprise",
+      "arr_band": "50k-250k",
+      "region": "apac",
+      "seats": 300,
+      "health_score": 66,
+      "csm_owner": "Priya Nandor"
+    },
+    {
+      "account_id": "acct_Zc5q",
+      "company_name": "Omnivault Insurance",
+      "plan": "enterprise",
+      "arr_band": ">250k",
+      "region": "us",
+      "seats": 2100,
+      "health_score": 89,
+      "csm_owner": "Dana Whitfield"
+    },
+    {
+      "account_id": "acct_Ad9r",
+      "company_name": "Halcyonix Pharma",
+      "plan": "enterprise",
+      "arr_band": ">250k",
+      "region": "eu",
+      "seats": 680,
+      "health_score": 35,
+      "csm_owner": "Marcus Reyne"
+    },
+    {
+      "account_id": "acct_Be3s",
+      "company_name": "Torellux Aviation",
+      "plan": "enterprise",
+      "arr_band": "50k-250k",
+      "region": "apac",
+      "seats": 175,
+      "health_score": 52,
+      "csm_owner": "Priya Nandor"
+    },
+    {
+      "account_id": "acct_Cf7t",
+      "company_name": "Praevex Dynamics",
+      "plan": "enterprise",
+      "arr_band": ">250k",
+      "region": "us",
+      "seats": 3400,
+      "health_score": 97,
+      "csm_owner": "Jordan Callister"
+    },
+    {
+      "account_id": "acct_Dg2u",
+      "company_name": "Solantis Holdings",
+      "plan": "enterprise",
+      "arr_band": ">250k",
+      "region": "eu",
+      "seats": 950,
+      "health_score": 81,
+      "csm_owner": "Marcus Reyne"
+    },
+    {
+      "account_id": "acct_Eh6v",
+      "company_name": "Kubrix Infrastructure",
+      "plan": "enterprise",
+      "arr_band": "50k-250k",
+      "region": "apac",
+      "seats": 210,
+      "health_score": 14,
+      "csm_owner": "Priya Nandor"
+    },
+    {
+      "account_id": "acct_Fj1w",
+      "company_name": "Veradyne Motors",
+      "plan": "enterprise",
+      "arr_band": ">250k",
+      "region": "us",
+      "seats": 1500,
+      "health_score": 45,
+      "csm_owner": "Dana Whitfield"
+    },
+    {
+      "account_id": "acct_Gk5x",
+      "company_name": "Aximera Consulting",
+      "plan": "enterprise",
+      "arr_band": ">250k",
+      "region": "eu",
+      "seats": 420,
+      "health_score": 73,
+      "csm_owner": "Jordan Callister"
+    },
+    {
+      "account_id": "acct_Hm9y",
+      "company_name": "Quantrell Mining",
+      "plan": "enterprise",
+      "arr_band": "50k-250k",
+      "region": "apac",
+      "seats": 280,
+      "health_score": 60,
+      "csm_owner": "Priya Nandor"
+    },
+    {
+      "account_id": "acct_Jn3z",
+      "company_name": "Devaulix Technologies",
+      "plan": "enterprise",
+      "arr_band": ">250k",
+      "region": "us",
+      "seats": 780,
+      "health_score": 86,
+      "csm_owner": "Jordan Callister"
+    },
+    {
+      "account_id": "acct_Kp7a",
+      "company_name": "Stratovex Aerospace",
+      "plan": "enterprise",
+      "arr_band": ">250k",
+      "region": "eu",
+      "seats": 1100,
+      "health_score": 29,
+      "csm_owner": "Marcus Reyne"
+    },
+    {
+      "account_id": "acct_Lq2b",
+      "company_name": "Ferrantic Robotics",
+      "plan": "enterprise",
+      "arr_band": "50k-250k",
+      "region": "apac",
+      "seats": 55,
+      "health_score": 71,
+      "csm_owner": "Priya Nandor"
+    }
+  ]
+}

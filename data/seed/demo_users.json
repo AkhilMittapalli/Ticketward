@@ -1,0 +1,80 @@
+{
+  "_metadata": {
+    "version": "1.0.0",
+    "created_at": "2026-10-08",
+    "description": "5 demo users for Taskmoor with role-based queue memberships. Passwords are null placeholders set at deploy time."
+  },
+  "users": [
+    {
+      "username": "agent.demo",
+      "display_name": "Demo Agent",
+      "email": "agent.demo@taskmoor-demo.example",
+      "role": "support_agent",
+      "is_demo": true,
+      "password_hash": null,
+      "queue_memberships": [
+        "general_support_tier_1",
+        "technical_support_tier_2",
+        "billing_and_accounts",
+        "customer_success_retention",
+        "security_and_privacy",
+        "incident_response"
+      ]
+    },
+    {
+      "username": "ops.demo",
+      "display_name": "Demo Ops Lead",
+      "email": "ops.demo@taskmoor-demo.example",
+      "role": "ops_lead",
+      "is_demo": true,
+      "password_hash": null,
+      "queue_memberships": [
+        "general_support_tier_1",
+        "technical_support_tier_2",
+        "billing_and_accounts",
+        "customer_success_retention",
+        "security_and_privacy",
+        "incident_response"
+      ]
+    },
+    {
+      "username": "csm.demo",
+      "display_name": "Demo CSM",
+      "email": "csm.demo@taskmoor-demo.example",
+      "role": "csm",
+      "is_demo": true,
+      "password_hash": null,
+      "queue_memberships": [
+        "customer_success_retention"
+      ]
+    },
+    {
+      "username": "eng.demo",
+      "display_name": "Demo Engineer",
+      "email": "eng.demo@taskmoor-demo.example",
+      "role": "engineering",
+      "is_demo": true,
+      "password_hash": null,
+      "queue_memberships": [
+        "technical_support_tier_2",
+        "incident_response"
+      ]
+    },
+    {
+      "username": "admin.demo",
+      "display_name": "Demo Admin",
+      "email": "admin.demo@taskmoor-demo.example",
+      "role": "admin",
+      "is_demo": true,
+      "password_hash": null,
+      "queue_memberships": [
+        "general_support_tier_1",
+        "technical_support_tier_2",
+        "billing_and_accounts",
+        "customer_success_retention",
+        "security_and_privacy",
+        "incident_response"
+      ]
+    }
+  ]
+}
