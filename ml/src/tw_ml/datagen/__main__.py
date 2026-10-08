@@ -11,6 +11,7 @@ Commands::
     manifest  build | freeze | verify            content-hash manifests (data/manifests)
     hardset   validate | split                   owner-written hard set checks and 30/70 split
     bitext    build | materialize --allow-download   Bitext OOD pointers (owner-run only)
+    kb        lint [--kb-dir D]                  KB front-matter + body linter (P1.17)
 
 Exit codes: 0 success, 1 a check failed, 2 usage or configuration error.
 """
@@ -460,6 +461,31 @@ def cmd_bitext(args: argparse.Namespace, paths: RepoPaths) -> int:
     return EXIT_OK
 
 
+def cmd_kb(args: argparse.Namespace, paths: RepoPaths) -> int:
+    """Lint KB markdown files (front-matter, brand denylist, injection patterns)."""
+    from tw_ml.datagen.factsheet import load_fact_sheet  # noqa: PLC0415
+    from tw_ml.datagen.kblint import lint_kb_dir  # noqa: PLC0415
+
+    taxonomy = load_taxonomy(paths.schemas_dir)
+    fact_sheet = load_fact_sheet(paths.spec_dir / "fact_sheet.v1.md", taxonomy)
+    kb_dir = Path(args.kb_dir) if args.kb_dir else paths.kb_dir
+    denylist_path = paths.pools_dir / "brand_denylist.txt"
+    report = lint_kb_dir(kb_dir, taxonomy, denylist_path, fact_sheet.known_codes())
+    out = {
+        "passed": report.passed,
+        "docs_checked": report.docs_checked,
+        "docs_passed": report.docs_passed,
+        "errors": report.error_count,
+        "warnings": report.warning_count,
+        "findings": [f.as_dict() for f in report.findings],
+    }
+    text = _json(out)
+    if args.report:
+        Path(args.report).write_text(text + "\n", encoding="utf-8")
+    _write(text)
+    return EXIT_OK if report.passed else EXIT_FAILED
+
+
 def cmd_keys(args: argparse.Namespace, paths: RepoPaths) -> int:
     """Store, inspect or delete generator API keys in the OS credential store."""
     config = load_datagen_config(paths.configs_dir / "datagen.yaml")
@@ -515,6 +541,7 @@ def build_parser() -> argparse.ArgumentParser:
     _add_qa(sub)
     _add_manifest(sub)
     _add_hardset_bitext(sub)
+    _add_kb(sub)
     _add_keys(sub)
     return parser
 
@@ -612,6 +639,14 @@ def _add_hardset_bitext(sub: Subparsers) -> None:
             cmd.add_argument("--rejects", help="evals/ood/review_decisions.v1.jsonl")
 
 
+def _add_kb(sub: Subparsers) -> None:
+    kb = sub.add_parser("kb", help="KB front-matter + body linter (P1.17)")
+    kb_sub = kb.add_subparsers(dest="kb_command", required=True)
+    lint = kb_sub.add_parser("lint", help="lint all KB docs")
+    lint.add_argument("--kb-dir", help="KB directory (default data/kb)")
+    lint.add_argument("--report", help="write JSON report to this file")
+
+
 def _add_keys(sub: Subparsers) -> None:
     keys_parser = sub.add_parser("keys", help="generator API keys in the OS credential store")
     keys_sub = keys_parser.add_subparsers(dest="keys_command", required=True)
@@ -632,6 +667,7 @@ COMMANDS: Final = {
     "manifest": cmd_manifest,
     "hardset": cmd_hardset,
     "bitext": cmd_bitext,
+    "kb": cmd_kb,
     "keys": cmd_keys,
 }
 
