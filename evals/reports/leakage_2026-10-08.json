@@ -1,0 +1,130 @@
+{
+  "config": {
+    "char_ngram": 5,
+    "embedding": {
+      "batch_size": 64,
+      "enabled": true,
+      "model": "BAAI/bge-small-en-v1.5",
+      "revision": "5c38ec7c405ec4b44b94cc5a9bb96e735b38267a",
+      "sentence_transformers_version": "6.1.0",
+      "tau": 0.92
+    },
+    "exact_max_pairs": 50000000,
+    "jaccard_flag": 0.7,
+    "jaccard_report": 0.5,
+    "kb": {
+      "report_run_tokens": 12,
+      "window_tokens": 30
+    },
+    "lsh": {
+      "crosscheck": true,
+      "datasketch_version": "2.0.0",
+      "expected_b": 30,
+      "expected_r": 4,
+      "num_perm": 128,
+      "seed": 1,
+      "threshold": 0.5,
+      "weights": [
+        0.2,
+        0.8
+      ]
+    },
+    "normalization": "nfkc|placeholders|lower|digits0|ws",
+    "prompt_echo": {
+      "intent_rate_limit": 0.05,
+      "ngram": 8,
+      "sources": [
+        "ml/prompts/datagen/pa_persona.v1.txt",
+        "ml/prompts/datagen/pb_scenario.v1.txt",
+        "data/spec/fact_sheet.v1.md"
+      ]
+    },
+    "protected": {
+      "containment_min_words": 5,
+      "jaccard": 0.6,
+      "span_words": 8,
+      "strings_file": "data/spec/protected_strings.txt"
+    },
+    "version": "leakage.v1",
+    "within_split_flag": 0.8
+  },
+  "counts": {},
+  "created_at": "2026-10-08T04:29:31+00:00",
+  "disjointness": {
+    "company_id": {},
+    "invoice_prefix": {},
+    "persona_id": {},
+    "scenario_seed": {},
+    "template_id": {}
+  },
+  "drops": [],
+  "embedding": {
+    "model": "BAAI/bge-small-en-v1.5",
+    "reason": "sentence-transformers not installed",
+    "revision": "5c38ec7c405ec4b44b94cc5a9bb96e735b38267a",
+    "status": "skipped",
+    "tau": 0.92
+  },
+  "flags": [],
+  "gate": {
+    "failures": [],
+    "passed": true
+  },
+  "input_files": {
+    "test_synth": "838453afac95f5c3e991811f5db53595bc33a02a381dda48f44a9583596aeb50",
+    "train": "aa46979d423aea28ad788fcaa50e3c6386cadd7f7099c584f455df37ccffbe1f",
+    "val": "54a09e69ecfc2cf1813cc1fa61d081178c352567926a2d70b91a252e4683ce26"
+  },
+  "inputs": {
+    "test_synth": 873,
+    "train": 1661,
+    "val": 230
+  },
+  "kb": {
+    "documents": 0,
+    "status": "no_kb_documents",
+    "windows": 0
+  },
+  "lsh": {
+    "b": 30,
+    "crosscheck": "no exact C2 flags to cross-check",
+    "r": 4
+  },
+  "nn_similarity_quantiles": {
+    "test_synth->train": {
+      "p50": 0.1409,
+      "p95": 0.1953,
+      "p99": 0.2246
+    }
+  },
+  "prompt_echo": {
+    "intent_rates": {
+      "account_access_issue": 0.0,
+      "billing_duplicate_charge": 0.0035,
+      "billing_payment_failure": 0.0,
+      "bug_report": 0.0,
+      "cancellation_request": 0.0,
+      "how_to_question": 0.0,
+      "other_unclear": 0.0205,
+      "plan_pricing_inquiry": 0.0,
+      "privacy_legal_request": 0.0053,
+      "refund_request": 0.0,
+      "security_report": 0.0,
+      "service_outage": 0.0,
+      "sso_login_failure": 0.0
+    },
+    "intents_over_limit": [],
+    "records_with_echo": 6,
+    "sources": [
+      "data/spec/fact_sheet.v1.md",
+      "ml/prompts/datagen/pa_persona.v1.txt",
+      "ml/prompts/datagen/pb_scenario.v1.txt"
+    ]
+  },
+  "replacements": [],
+  "report_only": {
+    "C2_band_pairs": 0,
+    "C6_entries": 104
+  },
+  "report_version": "leakage.v1"
+}
