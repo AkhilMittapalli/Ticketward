@@ -180,7 +180,12 @@ def cmd_validate(args: argparse.Namespace, paths: RepoPaths) -> int:
     if args.report:
         Path(args.report).write_text(text, encoding="utf-8")
     _write(text)
-    return EXIT_OK if report.passed else EXIT_FAILED
+    if not report.passed:
+        return EXIT_FAILED
+    if args.gates and not report.soft_gate_passed:
+        sys.stderr.write("soft gates failed (use --report for details)\n")
+        return EXIT_FAILED
+    return EXIT_OK
 
 
 def cmd_leakage(args: argparse.Namespace, paths: RepoPaths) -> int:
@@ -748,6 +753,9 @@ def _add_validate_leakage(sub: Subparsers) -> None:
     validate.add_argument("--split", required=True, choices=ALL_SPLITS)
     validate.add_argument("--file")
     validate.add_argument("--report")
+    validate.add_argument(
+        "--gates", action="store_true", help="fail on soft-gate violations too",
+    )
     leak = sub.add_parser("leakage", help="leakage checks C1-C7")
     leak.add_argument("--input", action="append", help="SPLIT=FILE (repeatable)")
     leak.add_argument("--kb-dir")

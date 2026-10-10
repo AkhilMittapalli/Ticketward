@@ -64,6 +64,11 @@ META_LEAK_RES: Final[tuple[re.Pattern[str], ...]] = (
 SCIM_RE: Final = re.compile(r"\bSCIM\b", re.IGNORECASE)
 CHAT_MIN_HISTORY: Final = 2
 
+GREETING_RATE_MAX: Final = 0.10
+KEYWORD_SHARE_MAX: Final = 0.75
+NEAR_DUP_RATE_MAX: Final = 0.02
+NEAR_DUP_JACCARD: Final = 0.80
+
 
 @dataclass(frozen=True, slots=True)
 class Finding:
@@ -485,6 +490,8 @@ class DatasetReport:
     records_with_errors: list[str] = field(default_factory=list)
     greeting_rate: float = 0.0
     keyword_share: dict[str, float] = field(default_factory=dict)
+    near_dup_rate: float = 0.0
+    near_dup_pairs: list[list[str]] = field(default_factory=list)
 
     @property
     def passed(self) -> bool:
@@ -496,6 +503,35 @@ class DatasetReport:
             or self.exact_duplicates
             or self.records_with_errors
         )
+
+    @property
+    def soft_gate_passed(self) -> bool:
+        """Soft gates: greeting rate, keyword share, near-dup rate (P1.31)."""
+        if self.greeting_rate > GREETING_RATE_MAX:
+            return False
+        if any(v > KEYWORD_SHARE_MAX for v in self.keyword_share.values()):
+            return False
+        return self.near_dup_rate <= NEAR_DUP_RATE_MAX
+
+
+def _compute_near_dups(
+    texts: Sequence[str], record_ids: Sequence[str],
+) -> tuple[float, list[list[str]]]:
+    """In-split near-duplicate rate via char 5-gram exact Jaccard (P1.31)."""
+    if len(texts) < 2:  # noqa: PLR2004
+        return 0.0, []
+    from tw_ml.datagen.leakage import ShingleIndex, exact_jaccard  # noqa: PLC0415
+
+    index = ShingleIndex(texts, n=5)
+    positions = list(range(len(texts)))
+    scan = exact_jaccard(index, positions, positions, NEAR_DUP_JACCARD, same=True)
+    flagged: set[int] = set()
+    pairs: list[list[str]] = []
+    for i, j, _ in scan.pairs:
+        flagged.update((i, j))
+        pairs.append([record_ids[i], record_ids[j]])
+    rate = len(flagged) / len(texts)
+    return rate, pairs
 
 
 def check_dataset(
@@ -521,6 +557,8 @@ def check_dataset(
     greetings = 0
     keyword_hits: Counter[str] = Counter()
     per_intent: Counter[str] = Counter()
+    customer_texts: list[str] = []
+    customer_ids: list[str] = []
     for number, line in enumerate(lines, start=1):
         if not line.strip():
             continue
@@ -542,6 +580,8 @@ def check_dataset(
             report.records_with_errors.append(prov.record_id)
         customer = f"{record.ticket.subject}\n{record.ticket.message}"
         greetings += bool(GREETING_RE.search(customer))
+        customer_texts.append(customer)
+        customer_ids.append(prov.record_id)
         intent = record.labels.intent
         per_intent[intent] += 1
         words = (keywords or {}).get(intent, ())
@@ -555,6 +595,9 @@ def check_dataset(
         for intent in sorted((keywords or {}).keys())
         if per_intent[intent]
     }
+    report.near_dup_rate, report.near_dup_pairs = _compute_near_dups(
+        customer_texts, customer_ids,
+    )
     return report
 
 
@@ -569,6 +612,7 @@ def report_json(report: DatasetReport) -> str:
     """
     payload = asdict(report)
     payload["passed"] = report.passed
+    payload["soft_gate_passed"] = report.soft_gate_passed
     payload["schema_errors"] = {str(k): v for k, v in report.schema_errors.items()}
     return json.dumps(payload, indent=2, sort_keys=True) + "\n"
 

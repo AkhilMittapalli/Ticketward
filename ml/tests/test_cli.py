@@ -192,6 +192,34 @@ def test_validate_a_protected_split_uses_the_plain_rules(
     assert _json_head(_out(capsys))["wrong_split"] == [f"tr_{i:05d}" for i in range(1, 5)]
 
 
+def test_validate_gates_flag_blocks_on_soft_violation(
+    tmp_path: Path,
+    paths: RepoPaths,
+    train_rows: list[dict[str, Any]],
+    write_jsonl: Writer,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = write_jsonl(tmp_path / "train.jsonl", train_rows)
+    assert main(["validate", "--split", "train", "--file", str(source)], paths) == EXIT_OK
+    report = json.loads(_out(capsys))
+    assert report["passed"] is True
+    assert report["soft_gate_passed"] is True
+
+    import tw_ml.datagen.validate as val_mod  # noqa: PLC0415
+
+    monkeypatch.setattr(val_mod, "GREETING_RATE_MAX", -1.0)
+    assert (
+        main(["validate", "--split", "train", "--file", str(source), "--gates"], paths)
+        == EXIT_FAILED
+    )
+    assert "soft gates failed" in capsys.readouterr().err
+
+    monkeypatch.setattr(val_mod, "GREETING_RATE_MAX", 0.10)
+    assert main(["validate", "--split", "train", "--file", str(source)], paths) == EXIT_OK
+    _ = capsys.readouterr()
+
+
 # --------------------------------------------------------------------------- leakage
 
 

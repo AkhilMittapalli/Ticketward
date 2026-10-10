@@ -14,6 +14,10 @@ from tw_ml.datagen.records import (
     TriageLabels,
 )
 from tw_ml.datagen.validate import (
+    GREETING_RATE_MAX,
+    KEYWORD_SHARE_MAX,
+    NEAR_DUP_RATE_MAX,
+    DatasetReport,
     Finding,
     ValidationContext,
     check_dataset,
@@ -445,6 +449,7 @@ def test_check_dataset_gates(
     assert not report.passed
     payload = json.loads(report_json(report))
     assert payload["passed"] is False
+    assert payload["soft_gate_passed"] is False
     assert payload["schema_errors"] == {"5": report.schema_errors[5], "6": 1}
 
 
@@ -454,3 +459,61 @@ def test_check_dataset_flags_the_wrong_split(make_record: Records, vctx: Validat
     assert not report.passed
     clean = check_dataset([make_record().model_dump_json()], "train", vctx)
     assert clean.passed
+
+
+def test_soft_gate_passed_clean(make_record: Records, vctx: ValidationContext) -> None:
+    """A single clean record passes both hard and soft gates."""
+    report = check_dataset([make_record().model_dump_json()], "train", vctx)
+    assert report.passed
+    assert report.soft_gate_passed
+    assert report.near_dup_rate == 0.0
+    assert report.near_dup_pairs == []
+
+
+def test_soft_gate_fails_on_high_greeting_rate() -> None:
+    report = DatasetReport(split="train", greeting_rate=0.15)
+    assert not report.soft_gate_passed
+
+
+def test_soft_gate_fails_on_high_keyword_share() -> None:
+    report = DatasetReport(split="train", keyword_share={"billing_duplicate_charge": 0.80})
+    assert not report.soft_gate_passed
+
+
+def test_soft_gate_fails_on_high_near_dup_rate() -> None:
+    report = DatasetReport(split="train", near_dup_rate=0.05)
+    assert not report.soft_gate_passed
+
+
+def test_soft_gate_passes_within_thresholds() -> None:
+    report = DatasetReport(
+        split="train",
+        greeting_rate=GREETING_RATE_MAX,
+        keyword_share={"billing_duplicate_charge": KEYWORD_SHARE_MAX},
+        near_dup_rate=NEAR_DUP_RATE_MAX,
+    )
+    assert report.soft_gate_passed
+
+
+def test_near_dup_detection(
+    make_record: Records, make_ticket: Tickets, vctx: ValidationContext,
+) -> None:
+    """Two records with near-identical text are flagged as near-duplicates."""
+    msg = "Okta SAML_ERR_302 sign-in fails for our 40 users since 09:15 UTC today."
+    near = "Okta SAML_ERR_302 sign-in fails for our 40 users since 09:20 UTC today."
+    r1 = make_record(ticket=make_ticket(message=msg), record_id="tr_00001")
+    r2 = make_record(ticket=make_ticket(message=near), record_id="tr_00002")
+    lines = [r1.model_dump_json(), r2.model_dump_json()]
+    report = check_dataset(lines, "train", vctx)
+    assert report.near_dup_rate > 0
+    assert len(report.near_dup_pairs) >= 1
+    assert ["tr_00001", "tr_00002"] in report.near_dup_pairs
+
+
+def test_report_json_includes_soft_gate_passed(
+    make_record: Records, vctx: ValidationContext,
+) -> None:
+    report = check_dataset([make_record().model_dump_json()], "train", vctx)
+    payload = json.loads(report_json(report))
+    assert "soft_gate_passed" in payload
+    assert payload["soft_gate_passed"] is True
