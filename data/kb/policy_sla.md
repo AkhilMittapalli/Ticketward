@@ -38,25 +38,18 @@ Uptime is measured as the percentage of total minutes in a calendar month during
 
 Response time targets apply to Business and Enterprise plans only. Free and Starter plans receive support on a best-effort or standard-queue basis, respectively, without contractual response time guarantees.
 
-The following table states the First Response Time (FRT) and Resolution Time targets for the Business plan. Enterprise targets are calculated by applying the Enterprise FRT multiplier of 0.5x to the Business base values.
+The Business plan uses a 1x FRT multiplier; Enterprise applies a 0.5x multiplier to the Business base, halving the guaranteed first-response window for every severity level.
 
-### 3.1 Business Plan Response Targets (1x FRT Multiplier)
+### 3.1 Consolidated Response Targets
 
-| Priority | First Response Time | Resolution Target |
-|----------|--------------------:|------------------:|
-| Urgent   | 1 hour              | 8 hours           |
-| High     | 4 hours             | 1 business day    |
-| Normal   | 1 business day      | 3 business days   |
-| Low      | 2 business days     | 5 business days   |
+| Severity | Business FRT | Enterprise FRT | Business Resolution | Enterprise Resolution |
+|----------|-------------:|---------------:|--------------------:|----------------------:|
+| Urgent   | 60 min       | 30 min         | 8 h                | 4 h                   |
+| High     | 4 h          | 2 h            | 1 BD               | 4 business hours      |
+| Normal   | 1 BD         | 4 business hrs | 3 BD                | 1.5 BD                |
+| Low      | 2 BD         | 1 BD           | 5 BD                | 2.5 BD                |
 
-### 3.2 Enterprise Plan Response Targets (0.5x FRT Multiplier)
-
-| Priority | First Response Time | Resolution Target  |
-|----------|--------------------:|-------------------:|
-| Urgent   | 30 minutes          | 4 hours            |
-| High     | 2 hours             | 4 business hours   |
-| Normal   | 4 business hours    | 1.5 business days  |
-| Low      | 1 business day      | 2.5 business days  |
+BD = business day (see Definitions below).
 
 ## 4. Definitions
 
