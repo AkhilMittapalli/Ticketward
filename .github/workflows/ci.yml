@@ -130,6 +130,27 @@ jobs:
             --format requirements-txt --prune torch --output-file requirements/train.txt > /dev/null
           git diff --exit-code -- requirements/train.txt
 
+  data-provenance:
+    name: ml / data-provenance (A-01, S-12)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: ml
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          working-directory: ml
+          enable-cache: true
+          cache-dependency-glob: ml/uv.lock
+      - run: uv sync --locked
+      - name: No Anthropic-produced records in committed data (P1.27)
+        run: uv run python -m tw_ml.datagen provenance
+
   backend-integration:
     name: backend / integration (postgres + redis)
     runs-on: ubuntu-24.04

@@ -512,3 +512,93 @@ def test_bitext_build_and_materialize_with_a_fake_source(
     assert main(["bitext", "materialize", *files], paths) == EXIT_OK
     assert "materialized 500 records" in _out(capsys)
     assert len(records.read_text(encoding="utf-8").splitlines()) == 500
+
+
+# --------------------------------------------------------------------------- provenance
+
+
+def _provenance_sandbox(
+    tmp_path: Path, paths: RepoPaths, generator_families: dict[str, int],
+) -> RepoPaths:
+    import shutil  # noqa: PLC0415
+
+    root = tmp_path / "repo"
+    (root / "schemas" / "json").mkdir(parents=True)
+    for f in paths.schemas_dir.iterdir():
+        if f.is_file():
+            shutil.copy(f, root / "schemas" / "json" / f.name)
+    (root / "data" / "manifests").mkdir(parents=True)
+    (root / "data" / "spec").mkdir(parents=True)
+    (root / "evals").mkdir(parents=True)
+    file_entry = {
+        "path": "data/generated/train/records.jsonl",
+        "sha256": "a" * 64, "bytes": 100, "records": 1,
+    }
+    manifest_data = {
+        "manifest_version": "manifest.v1",
+        "split": "train",
+        "dataset_version": "v1",
+        "created_at": "2026-10-08T00:00:00Z",
+        "frozen": False,
+        "frozen_at": None,
+        "taxonomy_version": "2026-09-v1",
+        "files": [file_entry],
+        "records": 1,
+        "content_digest": "b" * 64,
+        "generator_families": generator_families,
+        "label_sources": {"generator_proposed": 1},
+    }
+    (root / "data" / "manifests" / "train.json").write_text(
+        json.dumps(manifest_data), encoding="utf-8",
+    )
+    return RepoPaths(root=root)
+
+
+def test_provenance_passes_on_clean_manifests(
+    tmp_path: Path,
+    paths: RepoPaths,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    sandbox = _provenance_sandbox(tmp_path, paths, {"openai_gpt_oss": 1})
+    assert main(["provenance"], sandbox) == EXIT_OK
+    report = _json_head(_out(capsys))
+    assert report["passed"] is True
+    assert report["violations"] == 0
+
+
+def test_provenance_fails_on_anthropic_generator_family(
+    tmp_path: Path,
+    paths: RepoPaths,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    sandbox = _provenance_sandbox(tmp_path, paths, {"anthropic_claude": 1})
+    assert main(["provenance"], sandbox) == EXIT_FAILED
+    report = _json_head(_out(capsys))
+    assert report["passed"] is False
+    assert report["violations"] >= 1
+    assert any("anthropic" in d["detail"] for d in report["details"])
+
+
+def test_provenance_detects_forbidden_vendor_in_committed_jsonl(
+    tmp_path: Path,
+    paths: RepoPaths,
+    write_jsonl: Writer,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    import shutil  # noqa: PLC0415
+
+    root = tmp_path / "repo"
+    (root / "schemas" / "json").mkdir(parents=True)
+    for f in paths.schemas_dir.iterdir():
+        if f.is_file():
+            shutil.copy(f, root / "schemas" / "json" / f.name)
+    (root / "data" / "manifests").mkdir(parents=True)
+    (root / "data" / "spec").mkdir(parents=True)
+    (root / "evals").mkdir(parents=True)
+    poisoned = [{"record_id": "tr_00001", "provenance": {"generator_model": "claude-3-opus"}}]
+    write_jsonl(root / "evals" / "bad.jsonl", poisoned)
+    sandbox = RepoPaths(root=root)
+    assert main(["provenance"], sandbox) == EXIT_FAILED
+    report = _json_head(_out(capsys))
+    assert report["passed"] is False
+    assert any("claude" in d["detail"] for d in report["details"])

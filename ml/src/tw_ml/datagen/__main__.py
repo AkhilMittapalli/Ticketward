@@ -12,6 +12,7 @@ Commands::
     hardset   validate | split                   owner-written hard set checks and 30/70 split
     bitext    build | materialize --allow-download   Bitext OOD pointers (owner-run only)
     kb        lint [--kb-dir D]                  KB front-matter + body linter (P1.17)
+    provenance [--scan-generated]                no Anthropic records in data/ (P1.27, S-12)
 
 Exit codes: 0 success, 1 a check failed, 2 usage or configuration error.
 """
@@ -486,6 +487,177 @@ def cmd_kb(args: argparse.Namespace, paths: RepoPaths) -> int:
     return EXIT_OK if report.passed else EXIT_FAILED
 
 
+_Violation = dict[str, str | None]
+_PROV_KEYS: Final[frozenset[str]] = frozenset({
+    "generator_family", "generator_model",
+    "api_model_id", "provider", "generator_endpoint",
+})
+
+
+def _vendor_marker(text: str) -> str | None:
+    from tw_ml.datagen.records import FORBIDDEN_VENDOR_MARKERS  # noqa: PLC0415
+
+    lowered = text.lower()
+    for marker in FORBIDDEN_VENDOR_MARKERS:
+        if marker in lowered:
+            return marker
+    return None
+
+
+def _prov_check_manifests(paths: RepoPaths, root: Path) -> list[_Violation]:
+    from tw_ml.datagen.records import ALLOWED_FAMILIES  # noqa: PLC0415
+
+    hits: list[_Violation] = []
+    for mf_path in sorted(paths.manifests_dir.glob("*.json")):
+        if "." in mf_path.stem:
+            continue
+        rel = mf_path.resolve().relative_to(root).as_posix()
+        try:
+            mf = manifest.load_manifest(mf_path)
+        except Exception as exc:
+            hits.append({"source": rel, "record_id": None,
+                         "rule": "A-01", "detail": f"bad manifest: {exc}"})
+            continue
+        allowed = ALLOWED_FAMILIES.get(mf.split, frozenset())
+        for family in mf.generator_families:
+            hit = _vendor_marker(family)
+            if hit:
+                hits.append({"source": rel, "record_id": None,
+                             "rule": "A-01",
+                             "detail": f"generator_family '{family}' "
+                                       f"contains '{hit}'"})
+            if family not in allowed:
+                hits.append({"source": rel, "record_id": None,
+                             "rule": "A-01",
+                             "detail": f"generator_family '{family}' "
+                                       f"not in ALLOWED_FAMILIES[{mf.split}]"})
+    return hits
+
+
+def _prov_check_matrix(paths: RepoPaths, root: Path) -> list[_Violation]:
+    matrix_path = paths.spec_dir / "generation_matrix.yaml"
+    if not matrix_path.is_file():
+        return []
+    import yaml  # noqa: PLC0415
+
+    raw = yaml.safe_load(matrix_path.read_text(encoding="utf-8"))
+    hits: list[_Violation] = []
+    rel = matrix_path.resolve().relative_to(root).as_posix()
+    for name, cfg in (raw.get("splits") or {}).items():
+        gf = cfg.get("generator_family", "")
+        hit = _vendor_marker(gf)
+        if hit:
+            detail = (f"split '{name}' generator_family "
+                      f"'{gf}' contains '{hit}'")
+            hits.append({"source": rel, "record_id": None,
+                         "rule": "A-01", "detail": detail})
+    return hits
+
+
+def _prov_scan_jsonl_fields(
+    data_file: Path, root: Path,
+) -> list[_Violation]:
+    hits: list[_Violation] = []
+    rel = data_file.resolve().relative_to(root).as_posix()
+    for line_no, raw in enumerate(read_lines(data_file), 1):
+        if not raw.strip():
+            continue
+        try:
+            row = json.loads(raw)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(row, dict):
+            continue
+        prov = row.get("provenance", row)
+        if not isinstance(prov, dict):
+            continue
+        rid = prov.get("record_id") or row.get("record_id")
+        for key in _PROV_KEYS:
+            val = prov.get(key)
+            if not isinstance(val, str):
+                continue
+            hit = _vendor_marker(val)
+            if hit:
+                hits.append({
+                    "source": f"{rel}:{line_no}",
+                    "record_id": rid,
+                    "rule": "A-01",
+                    "detail": f"{key}='{val}' contains '{hit}'",
+                })
+    return hits
+
+
+def _prov_check_generated(
+    paths: RepoPaths, root: Path,
+) -> list[_Violation]:
+    from tw_ml.datagen.records import ALLOWED_FAMILIES  # noqa: PLC0415
+
+    hits: list[_Violation] = []
+    if not paths.generated_dir.is_dir():
+        return hits
+    for split_dir in sorted(paths.generated_dir.iterdir()):
+        if split_dir.name not in ALL_SPLITS:
+            continue
+        records_file = split_dir / gen.RECORDS_FILE
+        if not records_file.is_file():
+            continue
+        allowed = ALLOWED_FAMILIES.get(split_dir.name, frozenset())
+        rel = records_file.resolve().relative_to(root).as_posix()
+        for ln, raw in enumerate(read_lines(records_file), 1):
+            if not raw.strip():
+                continue
+            try:
+                row = json.loads(raw)
+            except json.JSONDecodeError:
+                continue
+            prov = row.get("provenance")
+            if not isinstance(prov, dict):
+                continue
+            gf = prov.get("generator_family", "")
+            if gf and gf not in allowed:
+                hits.append({
+                    "source": f"{rel}:{ln}",
+                    "record_id": prov.get("record_id"),
+                    "rule": "A-01",
+                    "detail": f"generator_family '{gf}' "
+                              f"not allowed in {split_dir.name}",
+                })
+    return hits
+
+
+def cmd_provenance(args: argparse.Namespace, paths: RepoPaths) -> int:
+    """Data provenance check: no Anthropic-produced records in data/ (P1.27, S-12, A-01)."""
+    root = paths.root.resolve()
+    violations: list[_Violation] = []
+    violations += _prov_check_manifests(paths, root)
+    violations += _prov_check_matrix(paths, root)
+
+    scan_dirs = [paths.root / "data", paths.root / "evals"]
+    for base in scan_dirs:
+        if not base.is_dir():
+            continue
+        for data_file in sorted(base.rglob("*.jsonl")):
+            if "generated" in data_file.parts and not args.scan_generated:
+                continue
+            violations += _prov_scan_jsonl_fields(data_file, root)
+
+    if args.scan_generated:
+        violations += _prov_check_generated(paths, root)
+
+    passed = not violations
+    report = {
+        "passed": passed,
+        "violations": len(violations),
+        "details": violations,
+        "checked_at": _now().isoformat(),
+    }
+    text = _json(report)
+    if args.report:
+        Path(args.report).write_text(text + "\n", encoding="utf-8")
+    _write(text)
+    return EXIT_OK if passed else EXIT_FAILED
+
+
 def cmd_keys(args: argparse.Namespace, paths: RepoPaths) -> int:
     """Store, inspect or delete generator API keys in the OS credential store."""
     config = load_datagen_config(paths.configs_dir / "datagen.yaml")
@@ -542,6 +714,7 @@ def build_parser() -> argparse.ArgumentParser:
     _add_manifest(sub)
     _add_hardset_bitext(sub)
     _add_kb(sub)
+    _add_provenance(sub)
     _add_keys(sub)
     return parser
 
@@ -647,6 +820,15 @@ def _add_kb(sub: Subparsers) -> None:
     lint.add_argument("--report", help="write JSON report to this file")
 
 
+def _add_provenance(sub: Subparsers) -> None:
+    prov = sub.add_parser("provenance", help="data provenance check (P1.27, S-12, A-01)")
+    prov.add_argument(
+        "--scan-generated", action="store_true",
+        help="also scan data/generated/ JSONL (gitignored; for local use)",
+    )
+    prov.add_argument("--report", help="write JSON report to this file")
+
+
 def _add_keys(sub: Subparsers) -> None:
     keys_parser = sub.add_parser("keys", help="generator API keys in the OS credential store")
     keys_sub = keys_parser.add_subparsers(dest="keys_command", required=True)
@@ -668,6 +850,7 @@ COMMANDS: Final = {
     "hardset": cmd_hardset,
     "bitext": cmd_bitext,
     "kb": cmd_kb,
+    "provenance": cmd_provenance,
     "keys": cmd_keys,
 }
 
