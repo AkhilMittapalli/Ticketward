@@ -20,8 +20,8 @@ splits: # open splits only; the holdout guard refuses anything sealed (P2 runs v
 
 ollama:
   base_url: http://127.0.0.1:11434
-  version: 0.34.4 # pinned Ollama (verify at build time); its llama.cpp build converts the GGUFs
-  llama_cpp_build: b11081 # LLAMA_CPP_VERSION of Ollama v0.34.4 (verify)
+  version: 0.40.2 # pinned Ollama (installed 2026-10-11); its llama.cpp build converts the GGUFs
+  llama_cpp_build: verify # LLAMA_CPP_VERSION of Ollama v0.40.2 (verify when first model is loaded)
   timeout_s: 300 # read timeout per request: CPU decode of a 4B model with a ~1.5K-token prompt
   connect_timeout_s: 5
   retries: 1 # connection errors and 5xx only; 4xx and read timeouts are never retried
