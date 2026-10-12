@@ -285,8 +285,14 @@ def _sentinel_layout(
     full = _render(tokenizer, conversation, add_generation_prompt=True, kwargs=kwargs)
     closed = _render(tokenizer, conversation, add_generation_prompt=False, kwargs=kwargs)
     if not full.startswith(closed):
-        msg = "the generation prompt is not a pure suffix of the conversation"
-        raise PromptFormatError(msg)
+        # Phi-4 style: the template appends EOS when not generating and replaces it
+        # with the assistant header when generating; strip the trailing EOS and retry.
+        eos = getattr(tokenizer, "eos_token", None) or ""
+        if eos and closed.endswith(eos) and full.startswith(closed[: -len(eos)]):
+            closed = closed[: -len(eos)]
+        else:
+            msg = "the generation prompt is not a pure suffix of the conversation"
+            raise PromptFormatError(msg)
     if closed.count(SYSTEM_SENTINEL) != 1 or closed.count(USER_SENTINEL) != 1:
         msg = "the template drops or repeats message content; string assembly cannot match it"
         raise PromptFormatError(msg)
