@@ -84,7 +84,7 @@ def test_committed_config_encodes_the_request_protocol(paths: RepoPaths) -> None
         "repeat_penalty": 1.0,
     }
     assert request.cpu_options == {"num_gpu": 0, "num_thread": 8}
-    assert (config.ollama.version, config.ollama.llama_cpp_build) == ("0.34.4", "b11081")
+    assert (config.ollama.version, config.ollama.llama_cpp_build) == ("0.40.2", "b11351")
     assert config.sampling.cpu_sample_n == 50
     score = config.score
     weights = (score.w_macro_f1, score.w_min_critical_recall, score.w_latency, score.w_license)
@@ -355,7 +355,7 @@ def test_unverified_candidates_need_the_explicit_flag(
         (lambda o: o.models.clear(), "is not available locally"),
         (lambda o: o.add_model("tw-bakeoff-small-a", quantization="Q8_0"), "is Q8_0, expected"),
         (lambda o: o.add_model("tw-bakeoff-small-a", digest="cd" * 32), "digest differs"),
-        (lambda o: setattr(o, "version", "0.40.0"), "config pins 0.34.4"),
+        (lambda o: setattr(o, "version", "0.34.4"), "config pins 0.40.2"),
     ],
 )
 def test_preflight_blocks_mismatched_artifacts(

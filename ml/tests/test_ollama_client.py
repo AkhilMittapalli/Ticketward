@@ -191,13 +191,13 @@ def test_version_tags_and_ps_are_parsed() -> None:
         ]
     }
     handler, _ = _sequence(
-        httpx.Response(200, json={"version": "0.34.4"}),
+        httpx.Response(200, json={"version": "0.40.2"}),
         httpx.Response(200, json=tags),
         httpx.Response(200, json=ps),
         httpx.Response(200, json={}),
     )
     with _client(handler, []) as client:
-        assert client.version() == "0.34.4"
+        assert client.version() == "0.40.2"
         models = client.local_models()
         loaded = client.loaded_models()
         assert client.version() is None

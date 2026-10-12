@@ -860,7 +860,7 @@ class FakeOllama:
     """
 
     gold: dict[str, dict[str, Any]]
-    version: str = "0.34.4"
+    version: str = "0.40.2"
     models: dict[str, dict[str, Any]] = field(default_factory=dict)
     answers: dict[str, Any] = field(default_factory=dict)
     model_answers: dict[str, dict[str, Any]] = field(default_factory=dict)
