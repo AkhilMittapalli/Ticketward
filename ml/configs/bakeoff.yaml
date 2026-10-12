@@ -72,8 +72,10 @@ candidates:
     params_b: 2.0
     finetune_method: lora_fp16
     ollama_model: tw-bakeoff-qwen35-2b
+    ollama_digest: 9473629165ba
+    gguf_blob: sha256-70e0b4043481a98e6198f9824f11c19c8d0b758d1e40f2d460aaf693d7066408
     prompt_format: ml/configs/prompt_formats/qwen35-2b.json
-    verify_before_run: true
+    verify_before_run: false
     notes: >-
       Hybrid Gated DeltaNet; convert the text-only Qwen3_5ForCausalLM weights (no mmproj).
       Non-thinking by default; the template renders an empty think block. Prefix-cache reuse of the
@@ -87,8 +89,10 @@ candidates:
     params_b: 1.7
     finetune_method: lora_fp16
     ollama_model: tw-bakeoff-qwen3-1.7b
+    ollama_digest: f15672651935
+    gguf_blob: sha256-d5e0165fabcc4770399b46d01628c6b0476525ee688b641529f55fa16667ca58
     prompt_format: ml/configs/prompt_formats/qwen3-1.7b.json
-    verify_before_run: true
+    verify_before_run: false
     notes: Pure transformer, lowest tooling risk; enable_thinking=False renders an empty think block.
   - id: qwen3-4b-2507
     role: in-family test of the 3-point rule
@@ -99,8 +103,10 @@ candidates:
     params_b: 4.0
     finetune_method: qlora_nf4
     ollama_model: tw-bakeoff-qwen3-4b-2507
+    ollama_digest: db243e8827a4
+    gguf_blob: sha256-dc1d97ed4aa9d345cbb74e5e77f9d8d0b4217a220edf782109dc0eeaad610eae
     prompt_format: ml/configs/prompt_formats/qwen3-4b-2507.json
-    verify_before_run: true
+    verify_before_run: false
     notes: Non-thinking only (no think tags). Main risk is CPU latency at 4B.
   - id: llama32-3b
     role: cross-family comparator
@@ -126,8 +132,10 @@ candidates:
     params_b: 3.8
     finetune_method: qlora_nf4
     ollama_model: tw-bakeoff-phi4-mini
+    ollama_digest: 3ca434e53dd8
+    gguf_blob: sha256-c25d6341a5ff43deeaf87126573d6e5f7098ead4f6ce67bd1eb2a195f71734a5
     prompt_format: ml/configs/prompt_formats/phi4-mini.json
-    verify_before_run: true
+    verify_before_run: false
     notes: 200K vocabulary; no TRL auto-template (prompt-completion data). CPU latency at 3.8B.
   - id: gemma4-e2b
     role: optional
