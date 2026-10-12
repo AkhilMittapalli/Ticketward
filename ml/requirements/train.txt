@@ -1297,9 +1297,9 @@ transformers==5.17.0 \
     #   peft
     #   trl
     #   tw-ml
-trl==1.14.0 \
-    --hash=sha256:10059306c0efc6a2c32b17bc28363bb1c7b186a820d0e34e1fbd8b2aac80c22c \
-    --hash=sha256:c110d46307b097c44d9f6cdd556cc472563250f4000cbcf07ff69f86a1bbd45a
+trl==1.14.1 \
+    --hash=sha256:ae406a3ca113f23da33f297b4a067d7b25aa658ab9e5b226d36e775a55d9dfe5 \
+    --hash=sha256:d4bfa9d408b324088136477826173695df6f1d301b078ab2a29ef8519d0c10b7
     # via tw-ml
 typer==0.27.2 \
     --hash=sha256:269b7eb9d3c202ca84b4bc9618cb04ebb43d3d4d1e567e4c768607232c05f945 \
