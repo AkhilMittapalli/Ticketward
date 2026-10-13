@@ -5,12 +5,12 @@ decision-makers: Akhil Mittapalli (owner)
 consulted: brief §6, §8; spec §6.2, §9.4, §9.5, §9.6, §9.8, §16 P2–P3, §21 R-02/R-06/R-10/R-15/R-21; research slm-model-selection
 informed: contributors; model card readers
 supersedes: none
-amended: 2026-09-27 (spec v1.1)
+amended: 2026-10-13 (E3 evidence)
 ---
 
 # ADR-0011: Base SLM chosen by bake-off (default candidate: Qwen3.5-2B)
 
-> **Amended in spec v1.1 (2026-09-27; change record A-02). Status stays *Proposed* until the P2 bake-off.**
+> **Amended in spec v1.1 (2026-09-27; change record A-02). Status stays *Proposed* until the 1-epoch probe.**
 > * **Candidates:**
 >   * `Qwen/Qwen3.5-2B`: default;
 >   * `Qwen/Qwen3-1.7B`: fallback;
@@ -21,6 +21,31 @@ amended: 2026-09-27 (spec v1.1)
 > * A fixed **score formula**, a **1-epoch fine-tune probe** on the top 2, and a pre-agreed **decision rule** (below).
 > * **Llama naming and attribution rules** apply if a Llama base wins. **Chat-template determinism** is required
 >   (explicit kwargs, fixed date string, template sha256 recorded).
+>
+> **E3 zero-shot evidence (2026-10-13, `286ba02`).** 4/5 non-optional candidates scored (llama32-3b blocked on HF
+> gated-repo auth). val n = 230, hard_dev n = 30; Q4_K_M GGUFs from official safetensors; T = 0, seed 42.
+>
+> | Candidate | S | macro-F1 [95% CI] | min crit recall | P50 s | P95 s | JSON | M-08 |
+> |-----------|-------|-------------------|-----------------|-------|-------|------|------|
+> | phi4-mini | 0.794 | 0.898 [0.865, 0.930] | 0.864 | 14.4 | 28.0 | 100% | fail |
+> | qwen3-4b-2507 | 0.785 | 0.898 [0.866, 0.926] | 0.909 | 20.5 | 39.1 | 100% | fail |
+> | qwen3-1.7b | 0.747 | 0.789 [0.745, 0.831] | 0.792 | 12.0 | 18.7 | 97.0% | fail |
+> | qwen35-2b | 0.719 | 0.772 [0.717, 0.821] | 0.727 | 12.7 | 24.9 | 90.4% | fail |
+>
+> **Provisional winner: qwen3-1.7b** (best le_2b by S). The 3-4B models outscore it by +10.9 F1 points (≥ 3-point
+> rule met) but fail M-08 on CPU; the size rule yields them to qwen3-1.7b. **Top 2 for probe: phi4-mini,
+> qwen3-4b-2507.** The probe cannot change the winner unless a fine-tuned 3-4B model meets M-08, which is latency
+> (unchanged by fine-tuning). In practice the probe confirms qwen3-1.7b or (if qwen3.5-2B's probe F1 is within 1
+> point of best) reopens the default rule.
+>
+> **llama-bench** (CPU, 8 threads, `build 631109b34 (11351)`):
+>
+> | Candidate | pp1024 tok/s | tg256 tok/s |
+> |-----------|-------------|-------------|
+> | qwen3-1.7b | 264.80 ± 8.45 | 33.74 ± 3.70 |
+> | qwen35-2b | 154.32 ± 42.45 | 24.05 ± 4.89 |
+> | qwen3-4b-2507 | 111.32 ± 16.68 | 8.54 ± 4.99 |
+> | phi4-mini | 88.51 ± 7.57 | 12.66 ± 4.63 |
 
 ## Context and Problem Statement
 
@@ -68,11 +93,11 @@ Which base model should be fine-tuned?
 
 * **Protocol:**
   * every HF repo is pinned by commit SHA in `ml/configs/bakeoff.yaml`;
-  * GGUFs are converted from the official safetensors with the llama.cpp build the pinned Ollama ships (b11081 for
-    Ollama v0.34.4; verify), BF16 → `Q4_K_M` without imatrix, for parity; no library tags or third-party GGUFs;
+  * GGUFs are converted from the official safetensors with the llama.cpp build the pinned Ollama ships (b11351 for
+    Ollama v0.40.2), BF16 → `Q4_K_M` without imatrix, for parity; no library tags or third-party GGUFs (R-12);
   * the same deterministic `triage.v1` prompt, sent raw with the decoding schema: `temperature 0`, `num_ctx 8192`,
     `num_predict 512`, `seed 42`;
-  * val n = 450.
+  * val n = 230 (actual split size after generation).
 * **CPU speed:** `llama-bench -p 1024 -n 256 -t 8 -ngl 0 -r 5`, plus a 50-ticket Ollama sample (`num_gpu: 0,
   num_thread: 8`) recording prompt/decode rates and triage wall-time P50/P95.
 * **Score:** `S = 0.40·macroF1 + 0.25·min_critical_recall + 0.20·min(1, 5 s / triage_P50) + 0.15·Lic`, where
@@ -88,12 +113,14 @@ Which base model should be fine-tuned?
   Llama; the sha256 of the chat template and of one golden rendering stored in `model_versions` and the model card.
 
 **Evidence required to move to Accepted:**
-1. Research `slm-model-selection` updated at P2 start, with pinned SHAs, licences re-read, and any newer small models
-   considered (R-14).
-2. `evals/reports/<date>/bakeoff.md` and `baselines.md`, reproducible from `make eval-baselines`, with the S table,
-   per-criterion values and CIs.
-3. Measured CPU P50/P95 per candidate on the dev laptop, and the T4 smoke results per finalist.
-4. The 1-epoch probe results for the top 2, logged in MLflow, and the decision rule applied as written.
+1. [x] Research `slm-model-selection` updated at P2 start, with pinned SHAs, licences re-read, and any newer small
+   models considered (R-14). Done 2026-10-11 (`13eed45`).
+2. [x] `evals/reports/2026-10-13/bakeoff.md` and `baselines.md`, reproducible from `make eval-baselines`, with the S
+   table, per-criterion values and CIs. bakeoff.md rendered 2026-10-13; baselines.md rendered 2026-10-11 (`751dcc0`).
+3. [x] Measured CPU P50/P95 per candidate on the dev laptop. Done 2026-10-13: Ollama 50-ticket CPU sample per
+   candidate, plus `llama-bench` raw throughput (`evals/reports/2026-10-13/llama_bench.json`). T4 smoke pending (P3).
+4. [ ] The 1-epoch probe results for the top 2 (phi4-mini, qwen3-4b-2507), logged in MLflow, and the decision rule
+   applied as written. **Pending — requires P3 Kaggle/Colab T4.**
 
 ### Consequences
 
@@ -146,7 +173,8 @@ Which base model should be fine-tuned?
 * Research: [slm-model-selection](../research/slm-model-selection.md).
 * Related ADRs: ADR-0012 (method by size), ADR-0014 (serving, parity), ADR-0017 (tokenization for confidence),
   ADR-0018 (encoder baseline).
-* Revisit when: the bake-off completes (flip to Accepted), or a newer small-model generation meets the hard
+* Revisit when: the probe completes (flip to Accepted), or a newer small-model generation meets the hard
   constraints before P3.
 * Status history: 2026-09-26 Proposed (pending the P2 bake-off). 2026-09-27 amended for spec v1.1 (new candidate
-  set, score, probe, decision rule, Llama rules); still Proposed.
+  set, score, probe, decision rule, Llama rules); still Proposed. 2026-10-13 amended with E3 zero-shot evidence,
+  llama-bench results and bakeoff.md; provisional winner qwen3-1.7b; still Proposed (probe pending).

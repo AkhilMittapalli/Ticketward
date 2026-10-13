@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -135,7 +136,12 @@ def test_hub_cli_refusals(paths: RepoPaths, capsys: pytest.CaptureFixture[str]) 
     config = str(paths.configs_dir / "sft_qwen35_2b.yaml")
     assert hub.main(["push-run", "--config", config, "--seed", "42"]) == hub.EXIT_USAGE
     assert "<hf_user> placeholder" in capsys.readouterr().err
-    assert (
-        hub.main(["fetch-data", "--repo", "owner/data", "--revision", "a" * 40]) == hub.EXIT_USAGE
-    )
+    with patch(
+        "tw_ml.train.hub.hub_module",
+        side_effect=hub.HubError("huggingface_hub is not installed"),
+    ):
+        assert (
+            hub.main(["fetch-data", "--repo", "owner/data", "--revision", "a" * 40])
+            == hub.EXIT_USAGE
+        )
     assert "huggingface_hub is not installed" in capsys.readouterr().err
