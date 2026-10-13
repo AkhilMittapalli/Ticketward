@@ -6,9 +6,9 @@
 > specification, which is not part of this repository.
 
 **Created**: September 26, 2026
-**Last Updated**: September 26, 2026
-**Status**: Partially resolved
-**Status Note**: Landscape, licenses and chat templates are resolved from primary sources. The zero-shot bake-off (Q4) and dev-laptop CPU tokens/s (Q5) stay Open until P2 runs them. The final choice (Q6) depends on both.
+**Last Updated**: October 13, 2026
+**Status**: Mostly resolved
+**Status Note**: Q1-Q3 resolved from primary sources (2026-09-26). R-14 re-check done 2026-10-11: no new small models; candidate list unchanged. Q4 (E3 zero-shot bake-off) and Q5 (CPU bench) resolved 2026-10-13 (`d60f6bd`). Provisional winner: **qwen3-1.7b** (best le_2b by S; 3-4B models fail M-08). Q6 stays Open until the 1-epoch probe on the top 2 (phi4-mini, qwen3-4b-2507) completes in P3.
 **Category**: ML / Base-model selection
 **Linked ADR(s)**: ADR-0011 (base SLM choice), ADR-0012 (training stack), ADR-0014 (serving)
 **Spec sections**: §9.4 (prompt formats), §9.5 (model selection + bake-off), §9.6 (registry naming, model card), §9.8 M-01/M-03c/M-08, §21 R-06/R-10/R-14, §22, §23
@@ -24,8 +24,9 @@
   - Llama 3.2 inserts today's date into the system header.
   - Gemma 4 uses new `<|turn>` tokens.
   - Phi-4-mini is not among the families TRL auto-patches for assistant-only loss.
-- **Recommendation (provisional, pending P2 measurements):** run a 5-model zero-shot bake-off: Qwen3.5-2B, Qwen3-1.7B, Qwen3-4B-Instruct-2507, Llama-3.2-3B-Instruct and Phi-4-mini-instruct, plus optional Gemma-4-E2B-it and Qwen3.5-0.8B. Then run a short 1-epoch fine-tune probe on the top 2. The default candidate is **Qwen3.5-2B**. The pre-agreed fallback is **Qwen3-1.7B**: a pure transformer with the lowest tooling risk on T4 and CPU, used if the Qwen3.5 training smoke test or CPU latency fails.
-- The CPU latency target (M-08: triage P50 ≤ 5 s on 8 vCPU) is at risk for every 2–4B candidate. It must be measured in P2 before the base model is locked (see Open Risks).
+- **E3 zero-shot bake-off completed (2026-10-13).** 4/5 non-optional candidates scored on val (n=230) + hard_dev (n=30). Llama-3.2-3B blocked on HF gated-repo auth. phi4-mini and qwen3-4b-2507 lead on F1 (0.898) but fail M-08 on CPU (tg 8-13 tok/s). qwen3-1.7b wins le_2b (S=0.747, F1=0.789, tg=33.74 tok/s). qwen35-2b underperforms (F1=0.772, JSON=90.4%).
+- **Provisional winner: qwen3-1.7b.** The 3-4B models outscore it by ≥ 10 F1 points (≥ 3-point rule met) but cannot meet M-08 on CPU — the size rule yields them to qwen3-1.7b. The probe (P3) cannot change the winner unless a fine-tuned 3-4B model meets M-08, which is latency (unchanged by fine-tuning). Top 2 for probe: phi4-mini, qwen3-4b-2507.
+- The CPU latency target (M-08: triage P50 ≤ 5 s on 8 vCPU) **fails for all 4 candidates** at zero-shot output length. llama-bench confirms: only qwen3-1.7b has plausible tg throughput (33.74 tok/s); 3-4B models are 8-13 tok/s. Meeting M-08 requires shorter output (schema change) or relaxing the target via ADR.
 
 ---
 
@@ -143,31 +144,79 @@ HF publishing, for every candidate: the adapter, merged model and GGUF repos inh
 - **TRL support for assistant-only loss.** TRL auto-swaps a training template with `{% generation %}` markers for these families: Qwen2.5, Qwen3 (incl. Instruct-2507), Qwen3.5 (think/nothink variants), Qwen3.6, Qwen3.8, Llama 3/3.1/3.2, Gemma/Gemma3/Gemma4, Phi-3 and Phi-3.5 ([TRL Chat Templates](https://huggingface.co/docs/trl/main/en/chat_templates), accessed 2026-09-26). **Phi-4-mini is not listed**, so use a prompt-completion dataset for it (see `qlora-training-on-t4.md`).
 - **BOS handling in raw prompts.** llama-server inserts BOS for string prompts when the GGUF's `tokenizer.ggml.add_bos_token` is true ([llama-server README](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md)). Templates that emit `bos_token` themselves (Llama) will then produce a double BOS unless it is stripped.
 
-### Q4. Zero-shot bake-off results
+### Q4. Zero-shot bake-off results (E3, 2026-10-13)
 
-**Not run yet (Open, owned by P2).** Model-card benchmark tables are not a substitute. For example, the Qwen3.5-4B card compares it against much larger, mostly reasoning or "Thinking" models (GPT-OSS-120B/20B, Qwen3-Next-80B-A3B-Thinking, Qwen3-30B-A3B-Thinking-2507), and that model runs in thinking mode by default. General benchmarks like these do not predict non-thinking, schema-constrained triage on our taxonomy, so they were not used. The protocol is in the Decision section.
+**Resolved.** 4/5 non-optional candidates scored. Llama-3.2-3B-Instruct blocked on HF gated-repo auth (manual step pending). Protocol: Q4_K_M GGUFs from official safetensors, converted with llama.cpp b11351 (Ollama v0.40.2); Ollama constrained JSON decoding with T=0, seed 42, `triage.v1` prompt. val n=230, hard_dev n=30. Full reports in `evals/reports/2026-10-13/`.
+
+**Score table (S = 0.40·macroF1 + 0.25·min_crit_recall + 0.20·min(1, 5s/P50) + 0.15·Lic):**
+
+| Rank | Candidate | S | macro-F1 val [95% CI] | min crit recall | P50 s | P95 s | JSON % | M-08 |
+|------|-----------|-------|----------------------|-----------------|-------|-------|--------|------|
+| 1 | phi4-mini | 0.794 | 0.898 [0.865, 0.930] | 0.864 | 14.4 | 28.0 | 100 | fail |
+| 2 | qwen3-4b-2507 | 0.785 | 0.898 [0.866, 0.926] | 0.909 | 20.5 | 39.1 | 100 | fail |
+| 3 | qwen3-1.7b | 0.747 | 0.789 [0.745, 0.831] | 0.792 | 12.0 | 18.7 | 97.0 | fail |
+| 4 | qwen35-2b | 0.719 | 0.772 [0.717, 0.821] | 0.727 | 12.7 | 24.9 | 90.4 | fail |
+
+**hard_dev F1 (n=30):** phi4-mini 0.983, qwen35-2b 0.901, qwen3-4b-2507 0.922, qwen3-1.7b 0.722.
+
+**Key observations:**
+
+- phi4-mini and qwen3-4b-2507 tie on val F1 (0.898) but differ sharply on hard_dev (0.983 vs 0.922). Both achieve 100% JSON validity.
+- qwen35-2b (the spec default) underperforms qwen3-1.7b on val F1 (0.772 vs 0.789) and JSON validity (90.4% vs 97.0%), despite being a newer architecture. The hybrid GDN layers did not help on this task.
+- All candidates fail M-08 (P50 > 5s). The latency term in S is heavily discounted for all.
+- The `billing_` intent pair shares a 1-token prefix in qwen3-1.7b's tokenizer (P2.23 enum tokenization dump). The `escalate_to_*` actions share a 3-token prefix. These affect path-probability confidence granularity (ADR-0017).
+
+Model-card benchmark tables were not used — general benchmarks do not predict non-thinking, schema-constrained triage on our taxonomy.
 
 ### Q5. CPU Q4 tokens/s on the dev laptop
 
-**Not measured yet (Open).** Facts recorded 2026-09-26 via a local read-only `Get-CimInstance` query:
+**Resolved (2026-10-13).** Hardware facts recorded 2026-09-26 via `Get-CimInstance`:
 
 - CPU: **AMD Ryzen 7 8840HS**, 8 cores / 16 threads.
 - **15.3 GB** RAM visible to the OS.
-- GPU: AMD Radeon 780M integrated graphics.
-- **Ollama is not installed** and `llama-server` is not on PATH.
+- GPU: AMD Radeon 780M integrated graphics (not used for inference).
+- Ollama v0.40.2 installed; llama.cpp build `631109b34 (11351)`.
 
 The M-08 reference box is 8 vCPU / 16 GB, so this laptop is a close proxy.
 
+**llama-bench results** (`-p 1024 -n 256 -t 8 -ngl 0 -r 5`; note: runs were concurrent with E3 scoring, adding CPU contention and variance to the 3-4B models):
+
+| Candidate | pp1024 tok/s (± SD) | tg256 tok/s (± SD) |
+|-----------|--------------------|--------------------|
+| qwen3-1.7b | 264.80 ± 8.45 | 33.74 ± 3.70 |
+| qwen35-2b | 154.32 ± 42.45 | 24.05 ± 4.89 |
+| qwen3-4b-2507 | 111.32 ± 16.68 | 8.54 ± 4.99 |
+| phi4-mini | 88.51 ± 7.57 | 12.66 ± 4.63 |
+
+Full data in `evals/reports/2026-10-13/llama_bench.json`.
+
+**Key findings:**
+
+- qwen3-1.7b leads on both prompt-eval and text-generation throughput, as expected for the smallest model.
+- The 3-4B models (qwen3-4b-2507 at 8.54 tg tok/s, phi4-mini at 12.66 tg tok/s) confirm M-08 failure: at ~180 output tokens, generation alone takes 14-21 seconds.
+- qwen35-2b's high pp variance (42.45, 28% CV) reflects CPU contention during bench; the ordering is still clear.
+- Even qwen3-1.7b at 33.74 tg tok/s takes ~5.3 s to generate 180 tokens, plus prefill — triage P50 ≤ 5 s is at risk without output-length reduction.
+
 Serving-structure facts that bear on latency:
 
-- Ollama ≥ 0.30 runs GGUF models through llama.cpp's `llama-server` as a subprocess (see `gguf-export-and-ollama.md`). Ollama always sets `cache_prompt: true` ([llm/llama_server.go](https://github.com/ollama/ollama/blob/main/llm/llama_server.go)). llama-server's `cache_prompt` means "the common prefix does not have to be re-processed" ([server README](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md)).
+- Ollama ≥ 0.30 runs GGUF models through llama.cpp's `llama-server` as a subprocess ([llm/llama_server.go](https://github.com/ollama/ollama/blob/main/llm/llama_server.go)). Ollama always sets `cache_prompt: true`. llama-server's `cache_prompt` means "the common prefix does not have to be re-processed" ([server README](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md)).
 - For hybrid/recurrent models (Qwen3.5 GDN layers), llama-server relies on context checkpoints: `--ctx-checkpoints` (default 32) and `--checkpoint-min-step` (default 8192 tokens). The Ollama launch code does not pass either flag (source grep, accessed 2026-09-26).
-- **UNVERIFIED (verify at build time)** whether the ~350-token system-prompt prefix is reused across requests for Qwen3.5 under Ollama. Check `prompt_eval_duration` on two consecutive requests. Ollama documents it as "Time spent evaluating uncached prompt tokens" ([API docs](https://docs.ollama.com/api/generate)).
+- **UNVERIFIED (verify at build time)** whether the ~350-token system-prompt prefix is reused across requests for Qwen3.5 under Ollama.
 - Gemma 4 E2B's Ollama Q4_K_M artifact is 7.2 GB, almost half the laptop's RAM.
 
 ### Q6. Which is chosen and why
 
-**Not final (it depends on Q4 and Q5).** The provisional recommendation and decision rule are below. Trainability facts that bias the choice (details in `qlora-training-on-t4.md`):
+**Provisional winner: qwen3-1.7b.** The decision rule from the protocol:
+
+- **qwen35-2b (spec default)** fails condition (c): its val F1 (0.772) is 1.7 points below the best le_2b candidate (qwen3-1.7b at 0.789), exceeding the 1-point threshold. It also has the worst JSON validity (90.4%). The default falls to the fallback.
+- **qwen3-1.7b (fallback)** wins the le_2b tier. It has the highest CPU throughput (tg=33.74 tok/s), 97% JSON validity, and Apache-2.0 license.
+- **phi4-mini and qwen3-4b-2507** outscore qwen3-1.7b by ≥ 10 F1 points (meeting the ≥ 3-point rule for a bigger model), but both fail M-08 on CPU. The size rule yields them to qwen3-1.7b.
+- **The probe cannot change the winner** unless a fine-tuned 3-4B model meets M-08, which is latency (unchanged by fine-tuning). In practice the probe confirms qwen3-1.7b.
+- **Top 2 for probe:** phi4-mini (best hard_dev F1 and 100% JSON), qwen3-4b-2507 (same-family ladder, best min_crit_recall).
+
+**Final choice pending the 1-epoch probe in P3 (requires Kaggle/Colab T4).**
+
+Trainability facts that bias the choice (details in `qlora-training-on-t4.md`):
 
 - Unsloth: "It is not recommended to do QLoRA (4-bit) training on the Qwen3.5 models" ([Unsloth Qwen3.5 fine-tune docs](https://unsloth.ai/docs/models/qwen3.5/fine-tune)).
 - The Qwen3.5 Gated DeltaNet path "needs the optional `causal_conv1d` … and `fla` packages for its fast kernels — without them, the model silently falls back to slower and more memory hungry PyTorch ops" ([Transformers Qwen3.5 docs](https://huggingface.co/docs/transformers/model_doc/qwen3_5)).
@@ -195,9 +244,9 @@ The items below are recommendations, not sourced facts.
 ### 2. Bake-off protocol (identical for every candidate)
 
 1. Pin every HF repo by commit SHA in `ml/configs/bakeoff.yaml`.
-2. Convert the official safetensors yourself with llama.cpp at the build Ollama ships (b11081 for Ollama v0.34.4, see `gguf-export-and-ollama.md`) to BF16 GGUF, then `llama-quantize … Q4_K_M` with no imatrix, so that all candidates are treated equally. Do not use library tags or third-party GGUFs: they have mixed quants and supply-chain risk (R-12).
+2. Convert the official safetensors yourself with llama.cpp at the build Ollama ships (b11351 for Ollama v0.40.2, see `gguf-export-and-ollama.md`) to BF16 GGUF, then `llama-quantize … Q4_K_M` with no imatrix, so that all candidates are treated equally. Do not use library tags or third-party GGUFs: they have mixed quants and supply-chain risk (R-12).
 3. Render each prompt with the model's own HF template: `apply_chat_template(..., add_generation_prompt=True, enable_thinking=False)` where applicable, and a fixed `date_string` for Llama. Send it via Ollama `/api/generate` with `raw: true`, `format: <inlined TriageModelOutput schema>`, `options: {temperature: 0, num_ctx: 8192, num_predict: 512, seed: 42}` (see `constrained-decoding.md`).
-4. Use the same system prompt `triage.v1` for all models, on val n = 450. Run accuracy on the fastest available hardware (Kaggle T4 with a CUDA llama.cpp/Ollama build is fine). Spot-check 100 tickets on the laptop CPU to confirm the outputs are identical, since backends can differ numerically.
+4. Use the same system prompt `triage.v1` for all models, on val n = 230 (actual split size). Run accuracy on the dev laptop CPU (Ollama CPU-only). A T4 spot-check may follow in P3 to confirm outputs match.
 5. Measure CPU speed on the dev laptop, CPU-only:
    ```powershell
    # llama.cpp (pin the same build). -ngl 0 forces CPU; -t 8 = physical cores
@@ -225,7 +274,7 @@ The items below are recommendations, not sourced facts.
 
 ### 4. Naming
 
-`tw-triage-qwen35-2b-lora@0.1.0`. Use the method name that was actually used (`lora` or `qlora`), see `qlora-training-on-t4.md`. If a Llama base wins, use the `Llama-` prefix (SI-3).
+`tw-triage-qwen3-1.7b-lora@0.1.0` (provisional). The method name reflects what is actually used (`lora` for ≤ 2B, `qlora` for 3-4B), see `qlora-training-on-t4.md`. If a Llama base wins, use the `Llama-` prefix (SI-3).
 
 ### 5. Template determinism rule
 
@@ -235,36 +284,40 @@ Always pass the template kwargs explicitly (`enable_thinking=False`, and `date_s
 
 ## IMPLEMENTATION CHECKLIST
 
-- [ ] Re-run the Q1 searches at P2 start: new Qwen/Llama/Phi/Gemma small models, and license changes (R-14).
-- [ ] Accept the Llama 3.2 license on HF (manual gating) only if Llama stays in the bake-off.
-- [ ] Write `ml/configs/bakeoff.yaml` with repo ids and commit SHAs, chat-template kwargs, the quant type, and the llama.cpp build tag.
-- [ ] Write `tw_ml/eval/bakeoff.py`: GGUF convert → quantize → Ollama create → val run → metrics → latency sample → score table.
-- [ ] Install Ollama on the dev laptop (pinned version, same as compose), then run `llama-bench` and the 50-ticket latency sample with `num_gpu: 0`.
-- [ ] Run a T4 smoke test for each finalist (20 steps; see `qlora-training-on-t4.md`).
-- [ ] Run the 1-epoch probe for the top 2, then write ADR-0011 with the numbers, license table and template notes.
-- [ ] Record the chat-template sha256 and a golden rendered prompt per model.
+- [x] Re-run the Q1 searches at P2 start (R-14). Done 2026-10-11 (`13eed45`): no new small (<5B) models.
+- [ ] Accept the Llama 3.2 license on HF (manual gating). **Pending (manual step).**
+- [x] Write `ml/configs/bakeoff.yaml`. Done (`13eed45`, `4a365d0`).
+- [x] Write `tw_ml/eval/bakeoff.py` + runner + ranking + make targets. Done (`227d56f`).
+- [x] Install Ollama v0.40.2, run `llama-bench` and E3 bake-off. Done 2026-10-13 (`0300c83`).
+- [x] E3 zero-shot scoring: 4/5 candidates on val + hard_dev. Done 2026-10-13 (`286ba02`, `0300c83`).
+- [x] ADR-0011 updated with E3 evidence, llama-bench, protocol corrections. Done 2026-10-13 (`0300c83`).
+- [x] P2.23 enum tokenization dump for qwen3-1.7b. Done 2026-10-13 (`d60f6bd`).
+- [ ] Run a T4 smoke test for each finalist (20 steps). **Pending P3 (Kaggle).**
+- [ ] Run the 1-epoch probe for the top 2 (phi4-mini, qwen3-4b-2507). **Pending P3 (Kaggle).**
+- [ ] Record the chat-template sha256 and a golden rendered prompt per model. **Pending P3.**
 
 ---
 
 ## OPEN RISKS / TO VERIFY AT BUILD TIME
 
-1. **M-08 latency.** Illustrative arithmetic only, not a measurement: if the laptop measures 200 prompt tokens/s and 25 decode tokens/s for a 2B Q4 model, a 900-token prompt plus 180 output tokens takes about 4.5 s + 7.2 s ≈ 11.7 s, which would fail the 5 s P50 target. Measure first. The levers, in order:
-   - a shorter `rationale` or fewer optional fields (this is a schema change and needs an ADR);
-   - system-prompt prefix caching (pure-transformer models);
-   - a smaller model (0.8B/1.7B);
-   - a relaxed target via ADR.
-2. **Qwen3.5 prefix caching under Ollama** for hybrid layers (Finding Q5). **UNVERIFIED**.
-3. **Qwen3.5 GDN kernels on T4.** `fla`/`causal-conv1d` support for sm_75 is **UNVERIFIED**. The fallback is slow and memory hungry per the Transformers docs.
-4. **No newer Llama/Phi small model**, and whether the Gemma Prohibited Use Policy applies to Gemma 4. Both **UNVERIFIED**.
-5. **Gemma 4 E2B/E4B empty thinking tags** with thinking disabled (model-card statement). Verify at raw-prompt level if Gemma is kept.
+1. **M-08 latency — CONFIRMED AT RISK.** E3 + llama-bench show all 4 candidates fail M-08 at zero-shot output length. qwen3-1.7b is closest (tg=33.74 tok/s → ~5.3 s for 180 tokens, plus prefill). The levers, in order:
+   - a shorter `rationale` or fewer optional fields (schema change, needs ADR);
+   - system-prompt prefix caching (pure-transformer models — qwen3-1.7b supports this);
+   - a relaxed target via ADR (document the real P50 and justify).
+2. **Qwen3.5 prefix caching under Ollama** for hybrid layers (Finding Q5). **UNVERIFIED** but less critical now: qwen35-2b underperforms on accuracy and is no longer the default.
+3. **Qwen3.5 GDN kernels on T4.** `fla`/`causal-conv1d` support for sm_75 is **UNVERIFIED**. Less critical now since qwen35-2b is not the provisional winner.
+4. **No newer Llama/Phi small model**, and whether the Gemma Prohibited Use Policy applies to Gemma 4. Both **UNVERIFIED**. R-14 re-check 2026-10-11 found no new small models.
+5. **Gemma 4 E2B/E4B empty thinking tags** with thinking disabled. **UNVERIFIED**. Gemma was not tested in E3 (optional candidate).
 6. **Val → test shift.** Selecting on Family-A val can overfit generator style. The Family-B test is the arbiter, and it must never be used for selection.
+7. **Llama-3.2-3B-Instruct** still blocked on HF gated-repo auth (manual step). The 5th non-optional candidate remains untested.
 
 ---
 
 ## LINKED ADR
 
-- **ADR-0011: Base SLM choice.** Update it with the bake-off table, the probe results, the licenses table, the chosen default and fallback, and SI-1..SI-4.
+- **ADR-0011: Base SLM choice.** Updated 2026-10-13 with E3 evidence, llama-bench, and protocol corrections (`0300c83`). Still Proposed — awaiting probe results to move to Accepted.
 - ADR-0012 (training stack) and ADR-0014 (serving) are affected by trainability and serving facts; see the sibling ERPROT docs.
+- **ADR-0017** (path-probability confidence): informed by P2.23 enum tokenization dump (`d60f6bd`).
 
 ---
 

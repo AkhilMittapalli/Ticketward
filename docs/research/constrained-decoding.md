@@ -6,9 +6,9 @@
 > specification, which is not part of this repository.
 
 **Created**: September 26, 2026
-**Last Updated**: September 26, 2026
+**Last Updated**: October 11, 2026
 **Status**: Partially resolved
-**Status Note**: Q1–Q3 (Ollama/llama.cpp limits, GBNF, vLLM backends) are resolved from docs and source code. Q4 (the measured effect on our accuracy and latency) stays Open until the P2 bake-off.
+**Status Note**: Q1–Q3 (Ollama/llama.cpp limits, GBNF, vLLM backends) are resolved from docs and source code. Ollama 0.40.2 installed (llama.cpp b11351); decoding schema (`triage_model_output.decoding.json`) exported with inlined `$ref` and all keys required. Q4 (the measured effect on our accuracy and latency) stays Open until the P2 bake-off.
 **Category**: ML serving / Structured output
 **Linked ADR(s)**: ADR-0014 (Ollama serving, JSON-schema format; vLLM production path), ADR-0017 (confidence via constrained-token logprobs)
 **Spec sections**: §6 (contracts exported to JSON Schema), §6.2 (`TriageModelOutput`), §6.6 (validation + repair ladder), §7.1 (OllamaProvider / VLLMProvider), §9.4 (fixed key order, zero-shot with constrained decoding), §9.8 M-04, §23

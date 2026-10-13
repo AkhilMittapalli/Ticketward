@@ -135,7 +135,7 @@ A stub keeps the same headings and adds a **KNOWN SO FAR** section after QUESTIO
 |---|---|---|---|---|---|---|
 | 1 | [`slm-model-selection.md`](slm-model-selection.md) | ML / base-model selection | ADR-0011 | P2 | Partially resolved: zero-shot bake-off and dev-laptop CPU tokens/s pending (P2) | Applied in spec v1.1 (A-02) |
 | 2 | [`qlora-training-on-t4.md`](qlora-training-on-t4.md) | ML / fine-tuning | ADR-0012, ADR-0013 | P3 | Partially resolved: T4 smoke test per finalist; Kaggle quota numbers | Applied in spec v1.1 (A-03) |
-| 3 | [`synthetic-data-generation.md`](synthetic-data-generation.md) | Data / generation | ADR-0016, ADR-0031 | P1 | Partially resolved: 50-record pilot per generator family | Applied in spec v1.1 (A-01, A-11) |
+| 3 | [`synthetic-data-generation.md`](synthetic-data-generation.md) | Data / generation | ADR-0016, ADR-0031 | P1 | Resolved (2026-10-09): full generation completed; terms re-verify at freeze | Applied in spec v1.1 (A-01, A-11) |
 | 4 | [`leakage-and-dedup.md`](leakage-and-dedup.md) | Data / evaluation integrity | ADR-0016 | P1 | Partially resolved: τ_emb calibration on the P1 data | Applied in spec v1.1 (A-12) |
 | 5 | [`bitext-ood-dataset.md`](bitext-ood-dataset.md) | Data / OOD evaluation | ADR-0016 | P1 | Resolved | Applied in spec v1.1 (A-13) |
 | 6 | [`confidence-calibration.md`](confidence-calibration.md) | ML / confidence and gating | ADR-0017 | P3-P4 (τ re-fit P6) | Partially resolved: threshold values need P3 outputs | Applied in spec v1.1 (A-04) |

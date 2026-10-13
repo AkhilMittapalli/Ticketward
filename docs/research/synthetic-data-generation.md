@@ -7,7 +7,7 @@
 
 **Created**: 2026-09-26
 **Last Updated**: 2026-09-27
-**Status**: Partially resolved (vendor terms, generator choice, matrix, QA protocol and cost resolved; a 50-record pilot per generator family must confirm token counts, refusal rates and artifact rates before full generation)
+**Status**: Resolved (2026-10-09: full generation completed — train 1,661, val 230, test_synth 873, test_ood 500; cost ~$1.69 under $15 budget; 0 refusals, leakage C1–C7 clean, prompt echo 0.22%. Terms re-verification deferred to P1.28 freeze)
 **Category**: ML Data
 **Linked ADR(s)**: ADR-0016 (test set from a different model family + hard set + Bitext OOD), amendment required; ADR-new "Generator families and vendor-terms compliance" (proposed; number assigned at merge)
 **Spec sections**: §9.1, §9.2, §9.3, §9.7 (E6), §13 S-12, §16 P1, §20 L-01/L-06, §21 R-01/R-10, §23
