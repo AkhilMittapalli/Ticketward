@@ -6,9 +6,9 @@
 > specification, which is not part of this repository.
 
 **Created**: September 26, 2026
-**Last Updated**: September 27, 2026
+**Last Updated**: October 12, 2026
 **Status**: Partially resolved
-**Status Note**: The toolchain, commands, Ollama runtime behaviour and HF conventions are resolved from docs and source code. Still pending at P3: an end-to-end conversion of our merged text-only checkpoint, the quantization-drift measurement, and the template-parity tests.
+**Status Note**: The toolchain, commands, Ollama runtime behaviour and HF conventions are resolved from docs and source code. E3 bake-off (P2.15) validated base-model GGUF conversion for 4 architectures (Qwen3.5, Qwen3, Llama 3.2, Phi-4-mini) using llama.cpp b11351 binaries. `prompt_format.py` is fully implemented (derive, verify, render, golden renderings, CLI). Ollama upgraded to v0.40.2 (stable); version pins updated throughout. Still pending at P3: merged fine-tuned checkpoint conversion, imatrix quantization, drift gate, Modelfile template-parity tests, and HF Hub publishing.
 **Category**: ML serving / Export & packaging
 **Linked ADR(s)**: ADR-0014 (Ollama serving; vLLM production path), ADR-0011 (base model), ADR-0012 (training stack), ADR-0013 (registry)
 **Spec sections**: §7.1 (Ollama CPU), §9.5 "Export/serving", §9.6 (registry, HF Hub, model card), §9.8 M-08, §15 (health checks), §16 P3, §21 R-06/R-12/R-14, §23
@@ -19,7 +19,7 @@
 
 **Ollama's backend changed in 2026.**
 
-- **v0.30.0 (2026-05-13):** Ollama runs GGUF models by wrapping llama.cpp's `llama-server` as a subprocess. v0.34.4 pins llama.cpp **b11081**.
+- **v0.30.0 (2026-05-13):** Ollama runs GGUF models by wrapping llama.cpp's `llama-server` as a subprocess. v0.40.2 (current stable) pins llama.cpp **b11351**.
 - **v0.34.1 (2026-09-14):**
   - **`ADAPTER` (LoRA) support was removed.** The source now has `errAdaptersUnsupported = "LoRA adapters are no longer supported"`.
   - "GGUF model creation now requires using llama.cpp tooling for safetensor conversion and quantization." The import docs confirm: "Ollama does not quantize GGUF models during import."
@@ -56,7 +56,7 @@
 | SI-1 | ADR-0014 alternatives; runbooks | Ollama v0.34.1 removed LoRA adapters and create-time GGUF quantization. Bisected in source: absent in v0.34.0, present in v0.34.1. | State that merging and llama.cpp quantization are mandatory. The runtime-adapter option only exists with llama-server directly or with vLLM. |
 | SI-2 | §9.5 "Ollama `Modelfile` with template and `PARAMETER temperature 0`" | Default context is 4k on CPU ([context-length docs](https://docs.ollama.com/context-length)). There is no stop token unless set. Library bases inherit renderer, parser and penalties. | The Modelfile must set `num_ctx 8192`, `num_predict 512`, `stop "<|im_end|>"` (per family), `temperature 0`, and `seed`. Build `FROM ./<file>.gguf`, never from a library tag. |
 | SI-3 | §9.4 / §9.5 template | Chat-path rendering depends on Ollama's template selection (Go TEMPLATE vs llama-server Jinja, template autodetection, per-arch renderers). | The OllamaProvider sends **raw** prompts rendered from an exported `prompt_format.json`, and CI proves parity with the HF template. |
-| SI-4 | §9.6 `model_versions` (HF revision, GGUF sha256, eval_run_id) | Converter and runtime compatibility follows Ollama's pinned llama.cpp (`LLAMA_CPP_VERSION`: b11081 in v0.34.4, b10864 in v0.34.1, b9452 in v0.30.0). | Also record `llama_cpp_build`, `quant_type`, `imatrix_sha256`, `chat_template_sha256`, `ollama_version`, `calibrator_version`. |
+| SI-4 | §9.6 `model_versions` (HF revision, GGUF sha256, eval_run_id) | Converter and runtime compatibility follows Ollama's pinned llama.cpp (`LLAMA_CPP_VERSION`: b11351 in v0.40.2, b11081 in v0.34.4, b10864 in v0.34.1, b9452 in v0.30.0). | Also record `llama_cpp_build`, `quant_type`, `imatrix_sha256`, `chat_template_sha256`, `ollama_version`, `calibrator_version`. |
 | SI-5 | §9.5 "quantization-drift check (Q4 vs fp16 on val) ≤ 2 points macro-F1" | The spec gates only on macro-F1. | Keep it. Add per-critical-class recall drop ≤ 1 pt, JSON validity unchanged, and a calibrator re-fit per quant. Use the BF16 GGUF as the "fp16" reference, and check it against HF outputs. The imatrix comes from the train split only (leakage). |
 | SI-6 | §9.6 "HF Hub publishes the adapter (safetensors) + GGUF + model card" | Correct lineage needs `base_model` chains, and there are GGUF naming conventions. Llama requires a name prefix (see `slm-model-selection.md`). | Three repos (adapter, merged, GGUF) with the metadata below. |
 | SI-7 | §18 quick start "pull the GGUF from the HF Hub" | `ollama run hf.co/...` resolves the repo's current revision. | README may use it for convenience. Compose and eval must download by `revision=<sha>` and verify sha256 before `ollama create`. |
@@ -201,14 +201,14 @@ Quality, for LLaMA 3 8B vs FP16 from [tools/perplexity/README.md](https://github
 
 **Ollama releases** ([releases](https://github.com/ollama/ollama/releases), accessed 2026-09-26):
 
-- Latest stable **v0.34.4 (2026-09-23)**; pre-release v0.40.0 (2026-09-25).
+- Latest stable **v0.40.2** (installed locally); prior stable v0.34.4 (2026-09-23).
 - v0.30.0 (2026-05-13): llama.cpp backend.
 - v0.34.1: adapters removed; GGUF creation via llama.cpp tooling.
 - v0.17.5 (2026-03-02): Qwen3.5 support and "Fixed issue where Ollama would not be able to run models imported from Qwen3.5 GGUF files".
 - v0.12.11: logprobs, and Vulkan (opt-in `OLLAMA_VULKAN=1`).
 - v0.14.0: `REQUIRES`.
 
-**`LLAMA_CPP_VERSION`** per tag: v0.34.4 = `b11081`, v0.34.1 = `b10864`, v0.30.0 = `b9452` (raw file at each tag).
+**`LLAMA_CPP_VERSION`** per tag: v0.40.2 = `b11351`, v0.34.4 = `b11081`, v0.34.1 = `b10864`, v0.30.0 = `b9452` (raw file at each tag).
 
 ---
 
@@ -253,7 +253,7 @@ assert arch_saved in TEXT_ONLY_ARCHS, arch_saved             # text-only class -
 ### 3. Convert + quantize (Linux shell on Kaggle; pin the tag)
 
 ```bash
-LLAMA_TAG=b11081                    # = LLAMA_CPP_VERSION of the Ollama version we deploy (v0.34.4)
+LLAMA_TAG=b11351                    # = LLAMA_CPP_VERSION of the Ollama version we deploy (v0.40.2)
 git clone --depth 1 --branch "$LLAMA_TAG" https://github.com/ggml-org/llama.cpp && cd llama.cpp
 python -m pip install -r requirements.txt && python -m pip install "transformers==5.17.0"
 cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j --target llama-quantize llama-imatrix llama-perplexity llama-bench llama-server
@@ -285,7 +285,7 @@ For interactive use and the `/api/chat` path. The app uses raw mode.
 
 ```text
 FROM ./tw-triage-qwen35-2B-lora-v0.1.0-Q4_K_M.gguf
-REQUIRES 0.34.4
+REQUIRES 0.40.2
 TEMPLATE """{{- if .System }}<|im_start|>system
 {{ .System }}<|im_end|>
 {{ end }}{{ if .Prompt }}<|im_start|>user
@@ -307,7 +307,7 @@ LICENSE """Apache License 2.0. Fine-tuned from Qwen/Qwen3.5-2B (Apache-2.0). See
 
 - `ollama create tw-triage-qwen35-2b-lora:0.1.0 -f infra/ollama/Modelfile.tw-triage-qwen35-2b`, then `ollama ps` to confirm CONTEXT shows 8192 and PROCESSOR shows CPU.
 - This `TEMPLATE` reproduces the single-turn Qwen3.5 rendering with thinking off. It is a hypothesis until the parity test (§6) passes. For other families, derive the template the same way from `prompt_format.json`.
-- Compose settings: `OLLAMA_NUM_PARALLEL=2` (M-08 uses concurrency 2), `OLLAMA_KEEP_ALIVE=-1` or `30m`, image `ollama/ollama:0.34.4` (**verify the tag exists**). No `OLLAMA_VULKAN` for CPU-parity benchmarks.
+- Compose settings: `OLLAMA_NUM_PARALLEL=2` (M-08 uses concurrency 2), `OLLAMA_KEEP_ALIVE=-1` or `30m`, image `ollama/ollama:0.40.2`. No `OLLAMA_VULKAN` for CPU-parity benchmarks.
 
 ### 6. Train/serve parity: the export writes `prompt_format.json` and CI enforces it
 
@@ -340,7 +340,7 @@ LICENSE """Apache License 2.0. Fine-tuned from Qwen/Qwen3.5-2B (Apache-2.0). See
 
 ## IMPLEMENTATION CHECKLIST
 
-- [ ] `tw_ml.export.merge`, `.gguf` (convert/imatrix/quantize wrappers with the pinned tag), `.prompt_format`, `.calib_text` (train only), `.hub` (three repos, cards from `ml/model_cards/tw-triage.md.j2`).
+- [ ] `tw_ml.export.merge`, `.gguf` (convert/imatrix/quantize wrappers with the pinned tag), ~~`.prompt_format`~~ **(done)**, `.calib_text` (train only), `.hub` (three repos, cards from `ml/model_cards/tw-triage.md.j2`). `prompt_format.py` implements derive, verify, render, golden renderings (20), sentinel-based template decomposition, BOS dedup, and CLI.
 - [ ] `infra/ollama/Modelfile.*` generated from `prompt_format.json` and committed. Compose pins `ollama/ollama:<version>` to match `REQUIRES`.
 - [ ] The drift-gate report goes to `evals/reports/<date>/quant_drift.md` and to the model card.
 - [ ] Parity tests 1–6 in CI (1, 5) and nightly with real Ollama (2, 3, 4, 6).
@@ -351,7 +351,7 @@ LICENSE """Apache License 2.0. Fine-tuned from Qwen/Qwen3.5-2B (Apache-2.0). See
 
 ## OPEN RISKS / TO VERIFY AT BUILD TIME
 
-1. End-to-end conversion of a *merged* `Qwen3_5ForCausalLM` checkpoint at b11081, and that its tensors load in Ollama v0.34.4. Source-level evidence only. **UNVERIFIED**.
+1. End-to-end conversion of a *merged* fine-tuned `Qwen3_5ForCausalLM` checkpoint at b11351, and that its tensors load in Ollama v0.40.2. Base-model conversion validated for 4 architectures in E3 bake-off (P2.15), but merged-checkpoint conversion is **UNVERIFIED**.
 2. Drift for small hybrid models at Q4_K_M. **UNVERIFIED**; the gate decides.
 3. Whether the Modelfile `TEMPLATE` above equals the HF rendering, including whitespace. Parity test 2.
 4. Whether the `_debug_render_only` flag is stable. It is an underscore-prefixed debug field and may change; keep the test tolerant (skip if absent).
@@ -370,7 +370,7 @@ LICENSE """Apache License 2.0. Fine-tuned from Qwen/Qwen3.5-2B (Apache-2.0). See
 
 ## SOURCES (all accessed 2026-09-26)
 
-1. Ollama releases (v0.12.11, v0.14.0, v0.15.5, v0.17.5, v0.30.0, v0.34.1, v0.34.4, v0.40.0-pre): https://github.com/ollama/ollama/releases
+1. Ollama releases (v0.12.11, v0.14.0, v0.15.5, v0.17.5, v0.30.0, v0.34.1, v0.34.4, v0.40.2): https://github.com/ollama/ollama/releases
 2. Ollama docs, Importing a Model: https://docs.ollama.com/import
 3. Ollama docs, Modelfile Reference: https://docs.ollama.com/modelfile
 4. Ollama docs, Context length: https://docs.ollama.com/context-length

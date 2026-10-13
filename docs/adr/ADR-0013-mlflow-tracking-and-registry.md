@@ -5,11 +5,16 @@ decision-makers: Akhil Mittapalli (owner)
 consulted: spec §9.6, §9.9, §9.10, §10 (model_versions, eval_runs), §11 (model activation); research qlora-training-on-t4, evaluation-statistics
 informed: contributors; reviewers reproducing benchmarks
 supersedes: none
-amended: 2026-09-27 (spec v1.1)
+amended: 2026-10-12 (P2.17 operational evidence)
 ---
 
 # ADR-0013: MLflow for experiment tracking and model registry
 
+> **Amended 2026-10-12 (P2.17 operational evidence).** The MLflow tracking server is now **operational** in the
+> Docker Compose `ml` profile (commit `5c856b6`). Dockerfile: `python:3.12-slim` with MLflow 3.16.0 and `psycopg[binary]`
+> (v3, not psycopg2). Init script creates a dedicated `mlflow` user and database. Container is hardened (`read_only`,
+> `cap_drop: [ALL]`, resource limits). Tested: 59 tables auto-created, `/health` returns 200.
+>
 > **Amended in spec v1.1 (2026-09-27; change record A-26, W-m16).**
 > * **MLflow aliases** `@candidate` → `@staging` → `@production` replace the deprecated registry stages (verify
 >   against the pinned MLflow version). `model_versions.stage` mirrors the alias.

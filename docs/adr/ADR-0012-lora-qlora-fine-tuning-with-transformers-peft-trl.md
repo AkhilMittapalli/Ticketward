@@ -5,11 +5,17 @@ decision-makers: Akhil Mittapalli (owner)
 consulted: brief §6, §8, §9; spec §9.4, §9.5, §9.6, §21 R-03/R-21; research qlora-training-on-t4, gguf-export-and-ollama
 informed: contributors; model card and resume readers (method-accuracy rule)
 supersedes: none
-amended: 2026-09-27 (spec v1.1)
+amended: 2026-10-12 (P3.1 ERPROT evidence)
 ---
 
 # ADR-0012: LoRA (≤ 2B) or QLoRA (3–4B) SFT with Hugging Face Transformers, PEFT and TRL
 
+> **Amended 2026-10-12 (P3.1 ERPROT evidence).** Training code fully implemented and verified in
+> `tw_ml.train` (`config.py`, `sft.py`, `data.py`, `smoke.py`, `hub.py`; commit `68fe7c2`). Config validators enforce
+> `fp16=True`/`bf16=False`, method-by-size, `lm_head` exclusion, and `chunked_nll` with `nll` fallback. The TRL bf16
+> recast guard, epoch-end generation eval, and Hub checkpoint/resume are implemented. The smoke test covers all 7
+> ERPROT assertions. All open risks require T4 execution (P2.21).
+>
 > **Amended in spec v1.1 (2026-09-27; change record A-03).** The file was renamed from
 > `ADR-0012-qlora-with-transformers-peft-trl.md`, because the decision no longer defaults to QLoRA.
 > * **Method by base size:** **LoRA on an fp16 base** for ≤ 2B (the default path: Qwen3.5-2B, Qwen3-1.7B, 0.8B), and

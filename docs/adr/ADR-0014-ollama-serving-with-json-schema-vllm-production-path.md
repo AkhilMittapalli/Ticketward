@@ -5,15 +5,20 @@ decision-makers: Akhil Mittapalli (owner)
 consulted: brief §8; spec §6, §6.2, §6.6, §9.4, §9.5, §9.10, §15, §20 L-09, §21 R-05/R-06; research constrained-decoding, gguf-export-and-ollama, vllm-production-serving
 informed: contributors
 supersedes: none
-amended: 2026-09-27 (spec v1.1)
+amended: 2026-10-12 (P3.2 ERPROT evidence, version update)
 ---
 
 # ADR-0014: Ollama serving with JSON-schema format; vLLM as the production path
 
+> **Amended 2026-10-12 (P3.2 ERPROT evidence, version update).** Ollama updated to **v0.40.2** (llama.cpp **b11351**).
+> E3 bake-off (P2.15) validated base-model GGUF conversion and Ollama serving for 4 architectures (Qwen3.5, Qwen3,
+> Llama 3.2, Phi-4-mini) using Q4_K_M quants with the decoding schema. `prompt_format.py` is fully implemented
+> (sentinel decomposition, BOS deduplication, golden renderings, CLI). Version pins throughout ERPROT and Compose
+> updated from v0.34.4/b11081 to v0.40.2/b11351.
+>
 > **Amended in spec v1.1 (2026-09-27; change record A-19, A-04; ERPROT export/decoding impact items).**
 > * Ollama ≥ v0.34.1 removed runtime LoRA (`ADAPTER`) and create-time quantization. **Merging and llama.cpp
->   quantization are therefore mandatory** (ADR-0012 export). Pinned: Ollama 0.34.x (0.34.4 ships llama.cpp b11081;
->   verify).
+>   quantization are therefore mandatory** (ADR-0012 export). Pinned: Ollama **0.40.2** (ships llama.cpp **b11351**).
 > * **Raw prompts** (`raw: true`) rendered from `prompt_format.json`, with byte-for-byte parity tests. A derived
 >   **decoding schema** (refs inlined, every field required, key order = training order) is sent as `format`.
 > * `num_ctx 8192` (Ollama defaults to 4k on CPU), `num_predict 512`, `temperature 0`, `seed 42`, `repeat_penalty 1.0`,
@@ -56,7 +61,7 @@ Which inference server should serve the SLM in v1, and what is the documented pr
 
 ## Considered Options
 
-1. Ollama (pinned 0.34.x) with raw prompts + decoding schema for v1; vLLM documented as the production path (chosen)
+1. Ollama (pinned 0.40.x) with raw prompts + decoding schema for v1; vLLM documented as the production path (chosen)
 2. llama.cpp server (`llama-server`)
 3. Hugging Face TGI
 4. vLLM now

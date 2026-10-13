@@ -6,9 +6,9 @@
 > specification, which is not part of this repository.
 
 **Created**: September 26, 2026
-**Last Updated**: September 27, 2026
-**Status**: Partially resolved
-**Status Note**: Platform stack, precision rules, TRL API, Unsloth decision and checkpoint/resume are resolved from primary sources and code. Still pending: the 20-step T4 smoke test per finalist (memory, kernels, fp16), and Kaggle quota/session numbers, whose primary docs are JS-rendered and unreadable.
+**Last Updated**: October 12, 2026
+**Status**: Mostly resolved
+**Status Note**: All ERPROT recommendations are now implemented in code (`config.py`, `sft.py`, `data.py`, `smoke.py`, `hub.py`). Config validators enforce fp16=True/bf16=False, method-by-size (lora_fp16 vs qlora_nf4), explicit settings, and lm_head exclusion. `sft.py` (1366 lines) has the TRL bf16 recast guard, chunked_nll with nll fallback, epoch-end generation eval callback, and checkpoint/resume via Hub. `smoke.py` implements all 7 assertions. `data.py` builds Option A pre-tokenized rows with reject-over-max_length. Still pending: the T4 smoke test per finalist (P2.21) and one-epoch fine-tune probe (P2.22) on Colab/Kaggle, and Kaggle quota/session numbers (primary docs are JS-rendered).
 **Category**: ML / Training infrastructure
 **Linked ADR(s)**: ADR-0012 (HF Transformers + PEFT + TRL + bitsandbytes), ADR-0002 (Python pin), ADR-0003 (uv, separate ml lock), ADR-0013 (MLflow)
 **Spec sections**: §9.4 (loss on completion only), §9.5 (QLoRA table, hardware plan), §9.6 (tracking/registry), §14.2 (Python), §21 R-03/R-12/R-14, §23
@@ -462,10 +462,10 @@ It asserts:
 
 ## IMPLEMENTATION CHECKLIST
 
-- [ ] `ml/pyproject.toml`: `requires-python = ">=3.12,<3.14"`. Pin trl==1.14.0, transformers==5.17.0, peft==0.21.0, accelerate==1.15.0, `datasets>=4.7.0` (TRL's requirement), bitsandbytes==0.50.2, `huggingface-hub<2`, mlflow and codecarbon. Leave torch unpinned in the notebook export and assert 2.11.x at runtime. These pins are exact as of 2026-09-26; re-verify at P3 (R-14).
-- [ ] `tw_ml.train.data`: build Option A rows. Reject rows above `max_length`. Write the manifest hash.
-- [ ] `tw_ml.train.sft`: the code above, plus an epoch-end generation-eval callback and the fp32 re-cast guard.
-- [ ] `tw_ml.train.smoke`: the 7 assertions. Run on Kaggle T4 for every finalist.
+- [x] `ml/pyproject.toml`: `requires-python = ">=3.12,<3.14"`. Pins set for trl, transformers, peft, accelerate, datasets, bitsandbytes, huggingface-hub, mlflow, codecarbon. Torch unpinned in notebook export; asserted at runtime. Pins are as of 2026-09-26; re-verify at P3 (R-14).
+- [x] `tw_ml.train.data`: Option A pre-tokenized rows built (`input_ids` + `labels` with `-100` prompt mask). Rows exceeding `max_length` rejected (never truncated). Manifest hash written.
+- [x] `tw_ml.train.sft`: 1366-line module with epoch-end generation-eval callback (greedy batched, macro-F1 picks best checkpoint), the fp32 recast guard (lines 335–336), `chunked_nll` with `nll` fallback, `hub_strategy="checkpoint"`, and idempotent resume from Hub `last-checkpoint/`.
+- [x] `tw_ml.train.smoke`: all 7 assertions implemented (fp16 numerics, trainable-param dtypes, loss-type construction, peak memory, s/step projection, GDN fast-path detection, checkpoint resume round-trip). **Not yet executed on T4** (P2.21).
 - [ ] Kaggle notebook `ml/notebooks/train_kaggle.ipynb`: a thin wrapper with the install, smoke, two parallel seeds, then a third seed.
 - [ ] HF private checkpoint repos per seed. Delete them or make them public only after the sanitization review (§9.5).
 - [ ] Record the Kaggle quota and session limits observed in the UI (resolves the Q1 UNVERIFIED items). Update this doc to **Resolved**.
