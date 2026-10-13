@@ -1,0 +1,256 @@
+{
+  "schema_version": "bakeoff_ranking.v1",
+  "created_at": "2026-10-13T01:16:16.580080Z",
+  "config_version": "bakeoff.v1",
+  "config_sha256": "05e74df8117fc04f5ae2ccac04ded57db43dc072055c89e44cac95175e84729c",
+  "split": "val",
+  "gold_file": "data/generated/val/records.jsonl",
+  "gold_sha256": "54a09e69ecfc2cf1813cc1fa61d081178c352567926a2d70b91a252e4683ce26",
+  "weights": {
+    "macro_f1": 0.4,
+    "min_critical_recall": 0.25,
+    "latency": 0.2,
+    "license": 0.15
+  },
+  "min_gain_macro_f1": 0.03,
+  "ranked": [
+    {
+      "candidate_id": "phi4-mini",
+      "role": "Phi-family mini",
+      "optional": false,
+      "hf_repo": "microsoft/Phi-4-mini-instruct",
+      "params_b": 3.8,
+      "size_class": "3_4b",
+      "license": "mit",
+      "lic": 1.0,
+      "system_id": "tw-e3-zeroshot-phi4-mini@3ca434e53dd8+triage.v1",
+      "verified": true,
+      "n_scored": 230,
+      "macro_f1": 0.897794829448224,
+      "macro_f1_ci": [
+        0.86549489324472,
+        0.9295077794540728
+      ],
+      "critical_recall": {
+        "billing_duplicate_charge": 1.0,
+        "billing_payment_failure": 0.875,
+        "cancellation_request": 0.9473684210526315,
+        "service_outage": 1.0,
+        "security_report": 0.8636363636363636
+      },
+      "min_critical_recall": 0.8636363636363636,
+      "json_validity": 1.0,
+      "triage_p50_s": 14.421856,
+      "triage_p95_s": 28.024195,
+      "latency_term": 0.346696,
+      "m08_ok": false,
+      "cpu_output_agreement": 0.9,
+      "score": 0.794366,
+      "status": "ranked",
+      "reasons": []
+    },
+    {
+      "candidate_id": "qwen3-4b-2507",
+      "role": "in-family test of the 3-point rule",
+      "optional": false,
+      "hf_repo": "Qwen/Qwen3-4B-Instruct-2507",
+      "params_b": 4.0,
+      "size_class": "3_4b",
+      "license": "apache-2.0",
+      "lic": 1.0,
+      "system_id": "tw-e3-zeroshot-qwen3-4b-2507@db243e8827a4+triage.v1",
+      "verified": true,
+      "n_scored": 230,
+      "macro_f1": 0.8975268636088947,
+      "macro_f1_ci": [
+        0.8655363012664781,
+        0.925954854589173
+      ],
+      "critical_recall": {
+        "billing_duplicate_charge": 1.0,
+        "billing_payment_failure": 0.9583333333333334,
+        "cancellation_request": 1.0,
+        "service_outage": 1.0,
+        "security_report": 0.9090909090909091
+      },
+      "min_critical_recall": 0.9090909090909091,
+      "json_validity": 1.0,
+      "triage_p50_s": 20.451447,
+      "triage_p95_s": 39.088315,
+      "latency_term": 0.244481,
+      "m08_ok": false,
+      "cpu_output_agreement": 0.98,
+      "score": 0.78518,
+      "status": "ranked",
+      "reasons": []
+    },
+    {
+      "candidate_id": "qwen3-1.7b",
+      "role": "fallback",
+      "optional": false,
+      "hf_repo": "Qwen/Qwen3-1.7B",
+      "params_b": 1.7,
+      "size_class": "le_2b",
+      "license": "apache-2.0",
+      "lic": 1.0,
+      "system_id": "tw-e3-zeroshot-qwen3-1.7b@f15672651935+triage.v1",
+      "verified": true,
+      "n_scored": 230,
+      "macro_f1": 0.7888678359929439,
+      "macro_f1_ci": [
+        0.7450174693636089,
+        0.8305889758587298
+      ],
+      "critical_recall": {
+        "billing_duplicate_charge": 0.9565217391304348,
+        "billing_payment_failure": 0.7916666666666666,
+        "cancellation_request": 1.0,
+        "service_outage": 1.0,
+        "security_report": 0.9545454545454546
+      },
+      "min_critical_recall": 0.7916666666666666,
+      "json_validity": 0.9695652173913043,
+      "triage_p50_s": 12.013749,
+      "triage_p95_s": 18.670169,
+      "latency_term": 0.41619,
+      "m08_ok": false,
+      "cpu_output_agreement": 0.94,
+      "score": 0.746702,
+      "status": "ranked",
+      "reasons": []
+    },
+    {
+      "candidate_id": "qwen35-2b",
+      "role": "default",
+      "optional": false,
+      "hf_repo": "Qwen/Qwen3.5-2B",
+      "params_b": 2.0,
+      "size_class": "le_2b",
+      "license": "apache-2.0",
+      "lic": 1.0,
+      "system_id": "tw-e3-zeroshot-qwen35-2b@9473629165ba+triage.v1",
+      "verified": true,
+      "n_scored": 230,
+      "macro_f1": 0.7717288441821548,
+      "macro_f1_ci": [
+        0.7168145696365005,
+        0.8208060210994775
+      ],
+      "critical_recall": {
+        "billing_duplicate_charge": 0.782608695652174,
+        "billing_payment_failure": 0.75,
+        "cancellation_request": 0.8947368421052632,
+        "service_outage": 0.9642857142857143,
+        "security_report": 0.7272727272727273
+      },
+      "min_critical_recall": 0.7272727272727273,
+      "json_validity": 0.9043478260869565,
+      "triage_p50_s": 12.688047000000001,
+      "triage_p95_s": 24.875096000000003,
+      "latency_term": 0.394072,
+      "m08_ok": false,
+      "cpu_output_agreement": 0.14,
+      "score": 0.719324,
+      "status": "ranked",
+      "reasons": []
+    }
+  ],
+  "not_ranked": [
+    {
+      "candidate_id": "llama32-3b",
+      "role": "cross-family comparator",
+      "optional": false,
+      "hf_repo": "meta-llama/Llama-3.2-3B-Instruct",
+      "params_b": 3.21,
+      "size_class": "3_4b",
+      "license": "llama3.2",
+      "lic": 0.5,
+      "system_id": null,
+      "verified": false,
+      "n_scored": 0,
+      "macro_f1": null,
+      "macro_f1_ci": null,
+      "critical_recall": {},
+      "min_critical_recall": null,
+      "json_validity": null,
+      "triage_p50_s": null,
+      "triage_p95_s": null,
+      "latency_term": null,
+      "m08_ok": null,
+      "cpu_output_agreement": null,
+      "score": null,
+      "status": "incomplete",
+      "reasons": [
+        "no val accuracy run"
+      ]
+    },
+    {
+      "candidate_id": "gemma4-e2b",
+      "role": "optional",
+      "optional": true,
+      "hf_repo": "google/gemma-4-E2B-it",
+      "params_b": 5.1,
+      "size_class": "3_4b",
+      "license": "apache-2.0",
+      "lic": 1.0,
+      "system_id": null,
+      "verified": false,
+      "n_scored": 0,
+      "macro_f1": null,
+      "macro_f1_ci": null,
+      "critical_recall": {},
+      "min_critical_recall": null,
+      "json_validity": null,
+      "triage_p50_s": null,
+      "triage_p95_s": null,
+      "latency_term": null,
+      "m08_ok": null,
+      "cpu_output_agreement": null,
+      "score": null,
+      "status": "incomplete",
+      "reasons": [
+        "no val accuracy run"
+      ]
+    },
+    {
+      "candidate_id": "qwen35-0.8b",
+      "role": "optional latency floor",
+      "optional": true,
+      "hf_repo": "Qwen/Qwen3.5-0.8B",
+      "params_b": 0.8,
+      "size_class": "le_2b",
+      "license": "apache-2.0",
+      "lic": 1.0,
+      "system_id": null,
+      "verified": false,
+      "n_scored": 0,
+      "macro_f1": null,
+      "macro_f1_ci": null,
+      "critical_recall": {},
+      "min_critical_recall": null,
+      "json_validity": null,
+      "triage_p50_s": null,
+      "triage_p95_s": null,
+      "latency_term": null,
+      "m08_ok": null,
+      "cpu_output_agreement": null,
+      "score": null,
+      "status": "incomplete",
+      "reasons": [
+        "no val accuracy run"
+      ]
+    }
+  ],
+  "top2_for_probe": [
+    "phi4-mini",
+    "qwen3-4b-2507"
+  ],
+  "provisional_winner": "qwen3-1.7b",
+  "size_rule": [
+    "phi4-mini (3_4b) yields to the smaller qwen3-1.7b: M-08 is not met on its CPU sample"
+  ],
+  "decision_grade": true,
+  "notes": [
+    "zero-shot only: ADR-0011 applies the §9.5 decision rule to the 1-epoch probe"
+  ]
+}
