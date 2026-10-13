@@ -1,0 +1,998 @@
+{
+  "schema_version": "enum_tokenization.v1",
+  "model_id": "Qwen/Qwen3-1.7B",
+  "vocab_size": 151643,
+  "enums": {
+    "intent": {
+      "values": {
+        "sso_login_failure": {
+          "token_ids": [
+            82,
+            704,
+            13681,
+            43618
+          ],
+          "tokens": [
+            "s",
+            "so",
+            "_login",
+            "_failure"
+          ],
+          "n_tokens": 4
+        },
+        "account_access_issue": {
+          "token_ids": [
+            4608,
+            12759,
+            53340
+          ],
+          "tokens": [
+            "account",
+            "_access",
+            "_issue"
+          ],
+          "n_tokens": 3
+        },
+        "billing_duplicate_charge": {
+          "token_ids": [
+            38637,
+            70434,
+            46008
+          ],
+          "tokens": [
+            "billing",
+            "_duplicate",
+            "_charge"
+          ],
+          "n_tokens": 3
+        },
+        "billing_payment_failure": {
+          "token_ids": [
+            38637,
+            26696,
+            43618
+          ],
+          "tokens": [
+            "billing",
+            "_payment",
+            "_failure"
+          ],
+          "n_tokens": 3
+        },
+        "refund_request": {
+          "token_ids": [
+            68483,
+            7893
+          ],
+          "tokens": [
+            "refund",
+            "_request"
+          ],
+          "n_tokens": 2
+        },
+        "cancellation_request": {
+          "token_ids": [
+            66,
+            49222,
+            7893
+          ],
+          "tokens": [
+            "c",
+            "ancellation",
+            "_request"
+          ],
+          "n_tokens": 3
+        },
+        "plan_pricing_inquiry": {
+          "token_ids": [
+            10393,
+            620,
+            38806,
+            1243,
+            17343
+          ],
+          "tokens": [
+            "plan",
+            "_p",
+            "ricing",
+            "_in",
+            "quiry"
+          ],
+          "n_tokens": 5
+        },
+        "service_outage": {
+          "token_ids": [
+            7936,
+            6068,
+            424
+          ],
+          "tokens": [
+            "service",
+            "_out",
+            "age"
+          ],
+          "n_tokens": 3
+        },
+        "bug_report": {
+          "token_ids": [
+            2313,
+            14813
+          ],
+          "tokens": [
+            "bug",
+            "_report"
+          ],
+          "n_tokens": 2
+        },
+        "how_to_question": {
+          "token_ids": [
+            5158,
+            2346,
+            28915
+          ],
+          "tokens": [
+            "how",
+            "_to",
+            "_question"
+          ],
+          "n_tokens": 3
+        },
+        "security_report": {
+          "token_ids": [
+            17039,
+            14813
+          ],
+          "tokens": [
+            "security",
+            "_report"
+          ],
+          "n_tokens": 2
+        },
+        "privacy_legal_request": {
+          "token_ids": [
+            46821,
+            82324,
+            7893
+          ],
+          "tokens": [
+            "privacy",
+            "_legal",
+            "_request"
+          ],
+          "n_tokens": 3
+        },
+        "other_unclear": {
+          "token_ids": [
+            1575,
+            76576,
+            1547
+          ],
+          "tokens": [
+            "other",
+            "_unc",
+            "lear"
+          ],
+          "n_tokens": 3
+        }
+      },
+      "shared_prefix_groups": [
+        {
+          "shared_prefix_tokens": [
+            38637
+          ],
+          "shared_prefix_length": 1,
+          "values": [
+            "billing_duplicate_charge",
+            "billing_payment_failure"
+          ]
+        }
+      ],
+      "max_tokens": 5,
+      "min_tokens": 2
+    },
+    "priority": {
+      "values": {
+        "urgent": {
+          "token_ids": [
+            85053
+          ],
+          "tokens": [
+            "urgent"
+          ],
+          "n_tokens": 1
+        },
+        "high": {
+          "token_ids": [
+            11892
+          ],
+          "tokens": [
+            "high"
+          ],
+          "n_tokens": 1
+        },
+        "normal": {
+          "token_ids": [
+            8252
+          ],
+          "tokens": [
+            "normal"
+          ],
+          "n_tokens": 1
+        },
+        "low": {
+          "token_ids": [
+            10303
+          ],
+          "tokens": [
+            "low"
+          ],
+          "n_tokens": 1
+        }
+      },
+      "shared_prefix_groups": [],
+      "max_tokens": 1,
+      "min_tokens": 1
+    },
+    "sentiment": {
+      "values": {
+        "positive": {
+          "token_ids": [
+            30487
+          ],
+          "tokens": [
+            "positive"
+          ],
+          "n_tokens": 1
+        },
+        "neutral": {
+          "token_ids": [
+            59568
+          ],
+          "tokens": [
+            "neutral"
+          ],
+          "n_tokens": 1
+        },
+        "confused": {
+          "token_ids": [
+            6135,
+            2591
+          ],
+          "tokens": [
+            "conf",
+            "used"
+          ],
+          "n_tokens": 2
+        },
+        "frustrated": {
+          "token_ids": [
+            1626,
+            3414,
+            657
+          ],
+          "tokens": [
+            "fr",
+            "ustr",
+            "ated"
+          ],
+          "n_tokens": 3
+        },
+        "angry": {
+          "token_ids": [
+            524,
+            884
+          ],
+          "tokens": [
+            "ang",
+            "ry"
+          ],
+          "n_tokens": 2
+        }
+      },
+      "shared_prefix_groups": [],
+      "max_tokens": 3,
+      "min_tokens": 1
+    },
+    "churn_risk": {
+      "values": {
+        "low": {
+          "token_ids": [
+            10303
+          ],
+          "tokens": [
+            "low"
+          ],
+          "n_tokens": 1
+        },
+        "medium": {
+          "token_ids": [
+            26086
+          ],
+          "tokens": [
+            "medium"
+          ],
+          "n_tokens": 1
+        },
+        "high": {
+          "token_ids": [
+            11892
+          ],
+          "tokens": [
+            "high"
+          ],
+          "n_tokens": 1
+        }
+      },
+      "shared_prefix_groups": [],
+      "max_tokens": 1,
+      "min_tokens": 1
+    },
+    "product_area": {
+      "values": {
+        "projects_tasks": {
+          "token_ids": [
+            17161,
+            32823
+          ],
+          "tokens": [
+            "projects",
+            "_tasks"
+          ],
+          "n_tokens": 2
+        },
+        "boards_timelines": {
+          "token_ids": [
+            19270,
+            29087,
+            10999
+          ],
+          "tokens": [
+            "boards",
+            "_tim",
+            "elines"
+          ],
+          "n_tokens": 3
+        },
+        "sso_identity": {
+          "token_ids": [
+            82,
+            704,
+            46244
+          ],
+          "tokens": [
+            "s",
+            "so",
+            "_identity"
+          ],
+          "n_tokens": 3
+        },
+        "user_admin_permissions": {
+          "token_ids": [
+            872,
+            12207,
+            44767
+          ],
+          "tokens": [
+            "user",
+            "_admin",
+            "_permissions"
+          ],
+          "n_tokens": 3
+        },
+        "billing_subscriptions": {
+          "token_ids": [
+            38637,
+            5228,
+            29966
+          ],
+          "tokens": [
+            "billing",
+            "_sub",
+            "scriptions"
+          ],
+          "n_tokens": 3
+        },
+        "integrations_api": {
+          "token_ids": [
+            80729,
+            804,
+            11697
+          ],
+          "tokens": [
+            "integr",
+            "ations",
+            "_api"
+          ],
+          "n_tokens": 3
+        },
+        "notifications_email": {
+          "token_ids": [
+            38188,
+            9172
+          ],
+          "tokens": [
+            "notifications",
+            "_email"
+          ],
+          "n_tokens": 2
+        },
+        "mobile_apps": {
+          "token_ids": [
+            14933,
+            69899
+          ],
+          "tokens": [
+            "mobile",
+            "_apps"
+          ],
+          "n_tokens": 2
+        },
+        "reporting_analytics": {
+          "token_ids": [
+            11736,
+            287,
+            12008,
+            17555
+          ],
+          "tokens": [
+            "report",
+            "ing",
+            "_an",
+            "alytics"
+          ],
+          "n_tokens": 4
+        },
+        "automations": {
+          "token_ids": [
+            27073,
+            804
+          ],
+          "tokens": [
+            "autom",
+            "ations"
+          ],
+          "n_tokens": 2
+        },
+        "data_import_export": {
+          "token_ids": [
+            691,
+            18434,
+            27114
+          ],
+          "tokens": [
+            "data",
+            "_import",
+            "_export"
+          ],
+          "n_tokens": 3
+        },
+        "platform_availability": {
+          "token_ids": [
+            15734,
+            26173,
+            12535
+          ],
+          "tokens": [
+            "platform",
+            "_av",
+            "ailability"
+          ],
+          "n_tokens": 3
+        }
+      },
+      "shared_prefix_groups": [],
+      "max_tokens": 4,
+      "min_tokens": 2
+    },
+    "recommended_queue": {
+      "values": {
+        "general_support_tier_1": {
+          "token_ids": [
+            24595,
+            25827,
+            528,
+            1268,
+            62,
+            16
+          ],
+          "tokens": [
+            "general",
+            "_support",
+            "_t",
+            "ier",
+            "_",
+            "1"
+          ],
+          "n_tokens": 6
+        },
+        "technical_support_tier_2": {
+          "token_ids": [
+            72137,
+            25827,
+            528,
+            1268,
+            62,
+            17
+          ],
+          "tokens": [
+            "technical",
+            "_support",
+            "_t",
+            "ier",
+            "_",
+            "2"
+          ],
+          "n_tokens": 6
+        },
+        "billing_and_accounts": {
+          "token_ids": [
+            38637,
+            8378,
+            55665
+          ],
+          "tokens": [
+            "billing",
+            "_and",
+            "_accounts"
+          ],
+          "n_tokens": 3
+        },
+        "customer_success_retention": {
+          "token_ids": [
+            11049,
+            18632,
+            21695,
+            2939
+          ],
+          "tokens": [
+            "customer",
+            "_success",
+            "_ret",
+            "ention"
+          ],
+          "n_tokens": 4
+        },
+        "security_and_privacy": {
+          "token_ids": [
+            17039,
+            8378,
+            24726,
+            2757
+          ],
+          "tokens": [
+            "security",
+            "_and",
+            "_priv",
+            "acy"
+          ],
+          "n_tokens": 4
+        },
+        "incident_response": {
+          "token_ids": [
+            75011,
+            9655
+          ],
+          "tokens": [
+            "incident",
+            "_response"
+          ],
+          "n_tokens": 2
+        }
+      },
+      "shared_prefix_groups": [],
+      "max_tokens": 6,
+      "min_tokens": 2
+    },
+    "recommended_action": {
+      "values": {
+        "answer_with_kb_article": {
+          "token_ids": [
+            9217,
+            6615,
+            95638,
+            37321
+          ],
+          "tokens": [
+            "answer",
+            "_with",
+            "_kb",
+            "_article"
+          ],
+          "n_tokens": 4
+        },
+        "request_more_information": {
+          "token_ids": [
+            2035,
+            36664,
+            35212
+          ],
+          "tokens": [
+            "request",
+            "_more",
+            "_information"
+          ],
+          "n_tokens": 3
+        },
+        "request_saml_error_details_and_check_known_incident": {
+          "token_ids": [
+            2035,
+            643,
+            9467,
+            4096,
+            13260,
+            8378,
+            7200,
+            71690,
+            31285,
+            1713
+          ],
+          "tokens": [
+            "request",
+            "_s",
+            "aml",
+            "_error",
+            "_details",
+            "_and",
+            "_check",
+            "_known",
+            "_inc",
+            "ident"
+          ],
+          "n_tokens": 10
+        },
+        "check_known_incident_and_share_status": {
+          "token_ids": [
+            2028,
+            71690,
+            31285,
+            1713,
+            8378,
+            38272,
+            4773
+          ],
+          "tokens": [
+            "check",
+            "_known",
+            "_inc",
+            "ident",
+            "_and",
+            "_share",
+            "_status"
+          ],
+          "n_tokens": 7
+        },
+        "collect_repro_steps_and_escalate_to_engineering": {
+          "token_ids": [
+            17384,
+            1288,
+            776,
+            22731,
+            8378,
+            62,
+            81082,
+            349,
+            2346,
+            24823,
+            4671
+          ],
+          "tokens": [
+            "collect",
+            "_re",
+            "pro",
+            "_steps",
+            "_and",
+            "_",
+            "escal",
+            "ate",
+            "_to",
+            "_engine",
+            "ering"
+          ],
+          "n_tokens": 11
+        },
+        "escalate_to_engineering": {
+          "token_ids": [
+            81082,
+            349,
+            2346,
+            24823,
+            4671
+          ],
+          "tokens": [
+            "escal",
+            "ate",
+            "_to",
+            "_engine",
+            "ering"
+          ],
+          "n_tokens": 5
+        },
+        "escalate_to_billing_for_review": {
+          "token_ids": [
+            81082,
+            349,
+            2346,
+            87807,
+            5478,
+            38661
+          ],
+          "tokens": [
+            "escal",
+            "ate",
+            "_to",
+            "_billing",
+            "_for",
+            "_review"
+          ],
+          "n_tokens": 6
+        },
+        "escalate_to_csm_retention": {
+          "token_ids": [
+            81082,
+            349,
+            2346,
+            666,
+            3563,
+            21695,
+            2939
+          ],
+          "tokens": [
+            "escal",
+            "ate",
+            "_to",
+            "_c",
+            "sm",
+            "_ret",
+            "ention"
+          ],
+          "n_tokens": 7
+        },
+        "escalate_to_security": {
+          "token_ids": [
+            81082,
+            349,
+            2346,
+            48726
+          ],
+          "tokens": [
+            "escal",
+            "ate",
+            "_to",
+            "_security"
+          ],
+          "n_tokens": 4
+        }
+      },
+      "shared_prefix_groups": [
+        {
+          "shared_prefix_tokens": [
+            2035
+          ],
+          "shared_prefix_length": 1,
+          "values": [
+            "request_more_information",
+            "request_saml_error_details_and_check_known_incident"
+          ]
+        },
+        {
+          "shared_prefix_tokens": [
+            81082,
+            349,
+            2346
+          ],
+          "shared_prefix_length": 3,
+          "values": [
+            "escalate_to_engineering",
+            "escalate_to_billing_for_review",
+            "escalate_to_csm_retention",
+            "escalate_to_security"
+          ]
+        }
+      ],
+      "max_tokens": 11,
+      "min_tokens": 3
+    },
+    "entity_type": {
+      "values": {
+        "error_code": {
+          "token_ids": [
+            841,
+            4136
+          ],
+          "tokens": [
+            "error",
+            "_code"
+          ],
+          "n_tokens": 2
+        },
+        "http_status": {
+          "token_ids": [
+            1254,
+            4773
+          ],
+          "tokens": [
+            "http",
+            "_status"
+          ],
+          "n_tokens": 2
+        },
+        "saml_idp": {
+          "token_ids": [
+            82,
+            9467,
+            842,
+            79
+          ],
+          "tokens": [
+            "s",
+            "aml",
+            "_id",
+            "p"
+          ],
+          "n_tokens": 4
+        },
+        "invoice_id": {
+          "token_ids": [
+            22217,
+            842
+          ],
+          "tokens": [
+            "invoice",
+            "_id"
+          ],
+          "n_tokens": 2
+        },
+        "charge_amount": {
+          "token_ids": [
+            13891,
+            13471
+          ],
+          "tokens": [
+            "charge",
+            "_amount"
+          ],
+          "n_tokens": 2
+        },
+        "currency": {
+          "token_ids": [
+            15973
+          ],
+          "tokens": [
+            "currency"
+          ],
+          "n_tokens": 1
+        },
+        "charge_date": {
+          "token_ids": [
+            13891,
+            4164
+          ],
+          "tokens": [
+            "charge",
+            "_date"
+          ],
+          "n_tokens": 2
+        },
+        "workspace_id": {
+          "token_ids": [
+            42909,
+            842
+          ],
+          "tokens": [
+            "workspace",
+            "_id"
+          ],
+          "n_tokens": 2
+        },
+        "account_id": {
+          "token_ids": [
+            4608,
+            842
+          ],
+          "tokens": [
+            "account",
+            "_id"
+          ],
+          "n_tokens": 2
+        },
+        "user_count_affected": {
+          "token_ids": [
+            872,
+            3180,
+            62,
+            31057
+          ],
+          "tokens": [
+            "user",
+            "_count",
+            "_",
+            "affected"
+          ],
+          "n_tokens": 4
+        },
+        "browser": {
+          "token_ids": [
+            22468
+          ],
+          "tokens": [
+            "browser"
+          ],
+          "n_tokens": 1
+        },
+        "os": {
+          "token_ids": [
+            436
+          ],
+          "tokens": [
+            "os"
+          ],
+          "n_tokens": 1
+        },
+        "app_version": {
+          "token_ids": [
+            676,
+            9438
+          ],
+          "tokens": [
+            "app",
+            "_version"
+          ],
+          "n_tokens": 2
+        },
+        "feature_name": {
+          "token_ids": [
+            12753,
+            1269
+          ],
+          "tokens": [
+            "feature",
+            "_name"
+          ],
+          "n_tokens": 2
+        },
+        "competitor_name": {
+          "token_ids": [
+            27245,
+            1919,
+            1269
+          ],
+          "tokens": [
+            "compet",
+            "itor",
+            "_name"
+          ],
+          "n_tokens": 3
+        },
+        "steps_already_tried": {
+          "token_ids": [
+            24080,
+            80772,
+            3547,
+            1122
+          ],
+          "tokens": [
+            "steps",
+            "_already",
+            "_tr",
+            "ied"
+          ],
+          "n_tokens": 4
+        }
+      },
+      "shared_prefix_groups": [
+        {
+          "shared_prefix_tokens": [
+            13891
+          ],
+          "shared_prefix_length": 1,
+          "values": [
+            "charge_amount",
+            "charge_date"
+          ]
+        }
+      ],
+      "max_tokens": 4,
+      "min_tokens": 1
+    }
+  }
+}
