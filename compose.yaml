@@ -48,9 +48,11 @@ services:
       PGDATA: /var/lib/postgresql/data/pgdata
     secrets:
       - tw_db_password
+      - tw_mlflow_db_password
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
+      - ./infra/postgres/01-mlflow-db.sh:/docker-entrypoint-initdb.d/01-mlflow-db.sh:ro
     tmpfs:
       - /var/run/postgresql:rw,nosuid,nodev,noexec,size=16m
       - /tmp:rw,nosuid,nodev,noexec,size=64m
@@ -161,11 +163,54 @@ services:
     stop_grace_period: 25s
     restart: unless-stopped
 
-  # --- Planned opt-in stacks (not part of `docker compose up`) --------------------------
+  # --- Opt-in stacks (activated with --profile <name>) -----------------------------------
+
+  mlflow:
+    image: ticketward-mlflow:${TW_IMAGE_TAG:-local}
+    build:
+      context: ./infra/mlflow
+      dockerfile: Dockerfile
+    profiles: [ml]
+    <<: *hardening
+    command:
+      - sh
+      - -c
+      - >-
+        exec mlflow server
+        --host 0.0.0.0
+        --port 5000
+        --backend-store-uri "postgresql://mlflow:$$(cat /run/secrets/tw_mlflow_db_password)@postgres:5432/mlflow"
+        --default-artifact-root /mlflow/artifacts
+    secrets:
+      - tw_mlflow_db_password
+    volumes:
+      - mlflow_artifacts:/mlflow/artifacts
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,noexec,size=64m
+      - /home/mlflow:rw,nosuid,nodev,noexec,size=16m
+    expose:
+      - "5000"
+    networks: [internal]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512m
+          pids: 128
+    restart: unless-stopped
+
+  # --- Planned opt-in stacks (not yet implemented) --------------------------------------
   # ollama:          # P3/P4, profile "ml": CPU SLM serving (GGUF + Modelfile), internal net only
   #   image: ollama/ollama:<pin by digest>
-  #   profiles: [ml]
-  # mlflow:          # P3, profile "ml": tracking + registry
   #   profiles: [ml]
   # otel-collector:  # P7, profile "observability" (+ prometheus, grafana, tempo)
   #   profiles: [observability]
@@ -179,9 +224,12 @@ networks:
 volumes:
   pgdata: {}
   redisdata: {}
+  mlflow_artifacts: {}
 
 secrets:
   tw_db_password:
     file: ./secrets/tw_db_password
   tw_redis_password:
     file: ./secrets/tw_redis_password
+  tw_mlflow_db_password:
+    file: ./secrets/tw_mlflow_db_password

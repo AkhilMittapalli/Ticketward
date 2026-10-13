@@ -14,7 +14,7 @@ import secrets
 import sys
 from pathlib import Path
 
-SECRET_NAMES = ("tw_db_password", "tw_redis_password")
+SECRET_NAMES = ("tw_db_password", "tw_redis_password", "tw_mlflow_db_password")
 SECRETS_DIR = Path(__file__).resolve().parents[1] / "secrets"
 
 
