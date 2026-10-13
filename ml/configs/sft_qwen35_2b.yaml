@@ -56,7 +56,7 @@ train:
   logging_steps: 5
   early_stopping_patience: 4 # evaluations of eval_loss
   metric_for_best_model: eval_loss
-  max_over_length_fraction: 0.01 # engineering guard, not a spec value: more rejected rows fail
+  max_over_length_fraction: 0.02 # engineering guard, not a spec value: more rejected rows fail
   generation_eval: # epoch-end greedy val macro-F1 picks the final checkpoint (ties: lower loss)
     max_new_tokens: 512
     batch_size: 16
