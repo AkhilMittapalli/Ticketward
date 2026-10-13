@@ -6,9 +6,9 @@
 > specification, which is not part of this repository.
 
 **Created**: September 26, 2026
-**Last Updated**: October 11, 2026
-**Status**: Partially resolved
-**Status Note**: Q1–Q3 (Ollama/llama.cpp limits, GBNF, vLLM backends) are resolved from docs and source code. Ollama 0.40.2 installed (llama.cpp b11351); decoding schema (`triage_model_output.decoding.json`) exported with inlined `$ref` and all keys required. Q4 (the measured effect on our accuracy and latency) stays Open until the P2 bake-off.
+**Last Updated**: October 13, 2026
+**Status**: Mostly resolved
+**Status Note**: Q1–Q3 resolved from docs and source. Q4 partially resolved: E3 bake-off (2026-10-13) provides constrained-only JSON validity and eval_count data; unconstrained comparison run not done (lower priority now that the grammar works). Q5–Q6 resolved. Decoding schema exported with inlined `$ref` and all keys required.
 **Category**: ML serving / Structured output
 **Linked ADR(s)**: ADR-0014 (Ollama serving, JSON-schema format; vLLM production path), ADR-0017 (confidence via constrained-token logprobs)
 **Spec sections**: §6 (contracts exported to JSON Schema), §6.2 (`TriageModelOutput`), §6.6 (validation + repair ladder), §7.1 (OllamaProvider / VLLMProvider), §9.4 (fixed key order, zero-shot with constrained decoding), §9.8 M-04, §23
@@ -188,12 +188,26 @@ From [vLLM Structured Outputs](https://docs.vllm.ai/en/latest/features/structure
 
 All accessed 2026-09-26.
 
-**Implications for Ticketward** (inference from the facts above, to be measured in P2):
+**E3 bake-off results (2026-10-13, constrained decoding on all candidates)**
 
-- **Fine-tuned model (E4):** the target JSON is exactly what SFT trained. The rejection sampler will rarely reject, so accuracy impact and grammar overhead should be minimal. The constraint's job is to guarantee **validity** (M-04 first-pass ≥ 98%).
-- **Zero-shot (E3):** the grammar prevents invalid JSON, but it can force the model off its preferred tokens. That makes E3 a fair floor, not a best case. Report E3 with and without the constraint for honesty.
-- **Latency:** structure tokens (13 keys, quotes, commas) are still one decode step each. llama.cpp has no jump-forward decoding. Output length, not the grammar, dominates CPU time. Measure `eval_count` per triage in P2.
+All E3 runs used Ollama `format` with the inlined decoding schema, T=0, seed 42. JSON validity:
+
+| Candidate | JSON valid % (val, n=230) | Notes |
+|-----------|---------------------------|-------|
+| phi4-mini | 100% | No grammar failures |
+| qwen3-4b-2507 | 100% | No grammar failures |
+| qwen3-1.7b | 97.0% | 7/230 invalid — likely truncation or grammar edge cases |
+| qwen35-2b | 90.4% | 22/230 invalid — highest failure rate |
+
+The 3-4B models achieve perfect JSON validity under constrained decoding; the le_2b models have measurable failure rates. The grammar prevents malformed JSON (curly braces, missing keys) but cannot prevent truncation (`done_reason == "length"`) or responses where the model fills string fields with enough text to hit `num_predict`.
+
+**Implications for Ticketward** (inference from the facts above, now partially measured):
+
+- **Fine-tuned model (E4):** the target JSON is exactly what SFT trained. The rejection sampler will rarely reject, so accuracy impact and grammar overhead should be minimal. The constraint's job is to guarantee **validity** (M-04 first-pass ≥ 98%). E3 shows the 3-4B models already meet M-04 at zero-shot; qwen3-1.7b at 97% is close and should improve with SFT.
+- **Zero-shot (E3):** the grammar prevents most invalid JSON. The 90-97% validity rates for le_2b models suggest the grammar is doing significant work to keep outputs parseable.
+- **Latency:** structure tokens (13 keys, quotes, commas) are still one decode step each. llama.cpp has no jump-forward decoding. Output length, not the grammar, dominates CPU time. llama-bench confirms: at 33.74 tg tok/s (qwen3-1.7b), ~180 output tokens take ~5.3 s.
 - **Field order:** labels come first and `rationale` last. This matches "rationale is not chain-of-thought" (§6.2) and lets confidence be read from the early tokens. Keep training and decoding order identical.
+- **Unconstrained comparison** not run in E3 (lower priority: the grammar clearly works and accuracy differences would only inform the literature question, not a design choice). May revisit in P10 for the honesty table.
 
 ### Q5. Making the decoding schema match the training target
 
@@ -326,7 +340,7 @@ Keep §6.6's `json_valid_first_pass`, `repaired_l1`, `repaired_l2` and `failed`.
 - [ ] `scripts/export_schemas.py` writes both `triage_model_output.schema.json` (API contract) and `triage_model_output.decoding.json` (grammar).
 - [ ] `tw_ml` builds training targets with `TriageModelOutput(...).model_dump_json()` (compact, declaration order). Assert the key order.
 - [ ] OllamaProvider: raw prompt, `format`, `done_reason` handling, `truncate:false`/`shift:false`, and an oversized-prompt integration test.
-- [ ] Nightly grammar-derivation test against llama-server at Ollama's pinned llama.cpp build (b11081 for v0.34.4).
+- [ ] Nightly grammar-derivation test against llama-server at Ollama's pinned llama.cpp build (b11351 for v0.40.2).
 - [ ] E3 (zero-shot) reported with and without the constraint on val. E4 constrained only.
 
 ---
@@ -336,8 +350,8 @@ Keep §6.6's `json_valid_first_pass`, `repaired_l1`, `repaired_l2` and `failed`.
 1. #21228 and #8073 status at the pinned llama.cpp build. The inlining workaround makes us independent of the fix, but keep the nightly grammar test.
 2. `truncate:false` behaviour end-to-end in Ollama v0.34.x (source-level inference only). **UNVERIFIED**.
 3. The exact llama-server response shape for `response_fields: ["generation_settings/grammar"]`. It is inferred from Ollama's code, which unmarshals `generation_settings/grammar`. **UNVERIFIED**.
-4. Grammar-induced tokenization drift. When the grammar forbids the model's preferred token (e.g. a merged `":"` token variant), the model is forced onto an unusual tokenization. This is rare for SFT targets but possible for zero-shot. Monitor E3 per-field error analysis.
-5. The latency share of structure tokens on CPU. Measure `eval_count` and the decode rate in P2 (feeds M-08; see `slm-model-selection.md`).
+4. Grammar-induced tokenization drift. When the grammar forbids the model's preferred token (e.g. a merged `":"` token variant), the model is forced onto an unusual tokenization. This is rare for SFT targets but possible for zero-shot. **E3 data:** qwen3-1.7b's 3% invalid rate and qwen35-2b's 9.6% rate may include drift-related failures. Per-field error analysis would clarify.
+5. The latency share of structure tokens on CPU. **Partially resolved:** llama-bench shows qwen3-1.7b at 33.74 tg tok/s; at ~180 output tokens (including structure tokens), generation takes ~5.3 s. `eval_count` per request was not separately extracted from E3.
 6. Security, cross-reference for `prompt-injection-defense.md`: llama-server tokenizes string prompts with special-token parsing enabled (`parse_special` true in `server-common.cpp`). A ticket containing literal `<|im_end|>` / `<|im_start|>` text could forge chat roles in raw mode (and in Go-template mode, which also sends a string). Neutralize the model's special-token literals in untrusted text before rendering. **Verify** with a red-team fixture.
 
 ---
