@@ -32,8 +32,8 @@ lora:
 train:
   max_length: 2048 # TRL's default 1024 truncates keep_start (loses the completion)
   epochs: 3
-  per_device_batch: 4
-  grad_accum: 8 # effective 32: ~113 optimizer steps per epoch, ~338 in total
+  per_device_batch: 2
+  grad_accum: 16 # effective 32: ~52 optimizer steps per epoch, ~156 in total
   per_device_eval_batch: 8
   lr: 2.0e-4 # TRL's default is 2e-5
   scheduler: cosine
@@ -45,8 +45,8 @@ train:
   loss_type: chunked_nll # verified by the smoke test; the fallback keeps the effective batch
   loss_fallback:
     loss_type: nll
-    per_device_batch: 2
-    grad_accum: 16
+    per_device_batch: 1
+    grad_accum: 32
   eval_steps: 25
   save_steps: 25
   save_total_limit: 3
